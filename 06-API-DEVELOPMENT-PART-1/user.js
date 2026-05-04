@@ -2,6 +2,15 @@ const express = require("express");
 const router = express.Router();
 
 
+// USER OBJECT
+class User {
+    constructor({name, age, address}) {
+        this.name = name;
+        this.age = age;
+        this.address = address;
+    }
+}
+
 router.get("/user/:id", (req, res) => {
     const userId = req.params.id;
     const filter = req.query.filter;
@@ -10,12 +19,8 @@ router.get("/user/:id", (req, res) => {
 
 
 router.post("/users", (req, res) => {
-    const {name, age} = req.body;
-    if (!name) {
-        return res.status(400).json({ error: "Name is required"})
-    }
+    const user = new User(req.body);
 
-    const user = {name, age};
     res.status(201).json({
         message: "User created Successfully!",
         user: user
