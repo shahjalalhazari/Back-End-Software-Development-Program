@@ -1,8 +1,9 @@
 const express = require("express");
-const { isValidUser } = require("./middleware/user");
+const { isValidUser, checkUserAgent } = require("./middleware/user");
 const app = express();
 
 app.use(express.json());
+app.use(checkUserAgent);
 
 
 const userRoute = require("./route/user");
