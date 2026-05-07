@@ -1,9 +1,11 @@
 const express = require("express");
 const { isValidUser, checkUserAgent } = require("./middleware/user");
 const { default: rateLimit } = require("express-rate-limit");
+const auditLogger = require("./middleware/audit/auditLogger");
 const app = express();
 
 app.use(express.json());
+app.use(auditLogger);
 app.use(checkUserAgent);
 
 
