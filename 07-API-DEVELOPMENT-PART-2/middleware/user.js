@@ -19,7 +19,7 @@ const checkUserAgent = (req, res, next) => {
         /wget/i,
         /paython-requests/i,
         /Go-http-client/i,
-        /java/i
+        /java/i,
         /sqlmap/i,
         /nmap/i,
         /Nikto/i,
