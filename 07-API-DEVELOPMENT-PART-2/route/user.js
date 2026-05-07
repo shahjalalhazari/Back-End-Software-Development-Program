@@ -1,14 +1,11 @@
 const express = require('express');
+const { getAllUsers, deleteUser, updateUser } = require('../controllers/userController');
 const router = express.Router();
 
-const users = [
-    { id: 1, name: 'Alice', email: 'alice@example.com' },
-    { id: 2, name: 'Bob', email: 'bob@example.com' }
-];
 
-router.get('/users', (req, res) => {
-    res.json(users);
-});
+router.get("/", getAllUsers);
+router.delete("/:id", deleteUser);
+router.put("/:id", updateUser);
 
 
 module.exports = router;
