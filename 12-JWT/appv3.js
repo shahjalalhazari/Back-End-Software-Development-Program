@@ -8,6 +8,24 @@ const JWT_SECRET = "your_jwt_secret_key";
 app.use(bodyParser.json());
 app.use(bodyParser.urlencoded({ extended: true }));
 
+
+// AUTH MIDDLEWARE
+function authMiddleware(req, res, next) {
+    const token = req.headers["authorization"]?.split(" ")[1];  // GET THE TOKEN FROM THE AUTHORIZATION HEADER
+
+    if (!token) {
+        return res.status(401).json({ message:"No token provided" });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, decoded)=> {
+        if (err) {
+            return res.status(401).json({ message: "Invalid token" });
+        }
+        req.user = decoded;
+        next();
+    })
+}
+
 // SIGNIN ROUTE
 app.post("/signin", (req, res) => {
     const {username, password} = req.body;
@@ -22,20 +40,8 @@ app.post("/signin", (req, res) => {
 });
 
 
-app.get("/protected", (req, res) => {
-    const token = req.headers["authorization"]?.split(" ")[1];  // GET THE TOKEN FROM THE AUTHORIZATION HEADER
-
-    if (!token) {
-        return res.status(401).json({ message:"No token provided" });
-    }
-
-    jwt.verify(token, JWT_SECRET, (err, decoded)=> {
-        if (err) {
-            return res.status(401).json({ message: "Invalid token" });
-        }
-
-        res.json({ message: `Hello ${decoded.username}, you have accessed to the protected routes!` });
-    })
+app.get("/protected", authMiddleware, (req, res) => {
+    res.json({ message: `Hello ${req.user.username}, you have accessed to the protected routes!` });    
 })
 
 app.listen(3000, () => {
