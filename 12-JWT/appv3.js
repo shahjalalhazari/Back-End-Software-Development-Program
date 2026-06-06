@@ -23,6 +23,19 @@ app.post("/signin", (req, res) => {
 
 
 app.get("/protected", (req, res) => {
+    const token = req.headers["authorization"]?.split(" ")[1];  // GET THE TOKEN FROM THE AUTHORIZATION HEADER
+
+    if (!token) {
+        return res.status(401).json({ message:"No token provided" });
+    }
+
+    jwt.verify(token, JWT_SECRET, (err, decoded)=> {
+        if (err) {
+            return res.status(401).json({ message: "Invalid token" });
+        }
+
+        res.json({ message: `Hello ${decoded.username}, you have accessed to the protected routes!` });
+    })
 })
 
 app.listen(3000, () => {
