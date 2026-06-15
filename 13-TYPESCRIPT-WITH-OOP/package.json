@@ -1,0 +1,19 @@
+{
+  "name": "13-typescript-with-oop",
+  "version": "1.0.0",
+  "description": "",
+  "license": "ISC",
+  "author": "",
+  "type": "commonjs",
+  "main": "index.js",
+  "scripts": {
+    "build": "tsc",
+    "watch": "nodemon --watch \"src/**/*.ts\" --exec \"npx ts-node\" src/app.ts"
+  },
+  "devDependencies": {
+    "@types/node": "^25.9.3",
+    "nodemon": "^3.1.14",
+    "ts-node": "^10.9.2",
+    "typescript": "^6.0.3"
+  }
+}
