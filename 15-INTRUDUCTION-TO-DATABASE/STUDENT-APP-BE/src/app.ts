@@ -37,6 +37,8 @@ app.post("/api/students", (req: Request, res: Response) => {
             description,
             createdAt: new Date().toISOString(),
         }
+
+        // SEND RES AFTER SUCCESS.
         res.status(201).json({
             message: "Student added successfully",
             status: "success",
@@ -50,6 +52,8 @@ app.post("/api/students", (req: Request, res: Response) => {
         });
     }
 });
+
+
 
 app.listen(env.port, () => {
   console.log(
