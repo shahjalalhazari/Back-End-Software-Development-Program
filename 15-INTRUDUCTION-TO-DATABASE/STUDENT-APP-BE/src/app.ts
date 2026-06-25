@@ -1,6 +1,7 @@
 import express, {Request, Response} from "express";
 import cors from "cors";
 import { env } from "./config/env";
+import { connectToPostgres, testDatabaseConnection } from "./utils/database";
 
 const app = express();
 
@@ -55,8 +56,14 @@ app.post("/api/students", (req: Request, res: Response) => {
 
 
 
-app.listen(env.port, () => {
-  console.log(
-    `🚀 Server running on http://localhost:${env.port}`
-  );
+app.listen(env.port, async () => {
+  console.log(`🚀 Server running on http://localhost:${env.port}`);
+
+    // CONNECT TO POSTGRESQL WHEN SERVER STARTS
+    try {
+        await connectToPostgres();
+        await testDatabaseConnection();
+    } catch (error) {
+        console.log("Failed to connect to database, but server is running");
+    }
 });

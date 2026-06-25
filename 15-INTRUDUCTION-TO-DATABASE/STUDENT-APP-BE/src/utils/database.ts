@@ -28,7 +28,7 @@ export async function connectToPostgres(): Promise<void> {
 export async function testDatabaseConnection(): Promise<void> {
     try {
         const client = await pool.connect();
-        const result = await client.query("SLECT NOW()");
+        const result = await client.query("SELECT NOW()");
         console.log("Database query test successful:", result.rows[0]);
         client.release();
     } catch (error) {
