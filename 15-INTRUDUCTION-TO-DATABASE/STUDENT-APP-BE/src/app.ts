@@ -1,7 +1,7 @@
 import express, {Request, Response} from "express";
 import cors from "cors";
 import { env } from "./config/env";
-import { connectToPostgres, testDatabaseConnection } from "./utils/database";
+import { connectToPostgres, executeQuery, testDatabaseConnection } from "./utils/database";
 
 const app = express();
 
@@ -38,6 +38,9 @@ app.post("/api/students", (req: Request, res: Response) => {
             description,
             createdAt: new Date().toISOString(),
         }
+
+        // INSERT STUDENT DATA IN STUDENT TABLE OF DATABSE
+        executeQuery("INSERT INTO Student (name, email, description) VALUES ($1, $2, $3)", [name, email, description]);
 
         // SEND RES AFTER SUCCESS.
         res.status(201).json({
