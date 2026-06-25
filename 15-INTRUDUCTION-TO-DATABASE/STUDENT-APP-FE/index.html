@@ -134,6 +134,31 @@
         description,
       });
 
+
+      // SEND DATA TO BACKEND
+      fetch("http://localhost:5000/api/students", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({ name, email, description }),
+      })
+        .then((response) => {
+          if (!response.ok) {
+            throw new Error("Network response was not ok");
+          }
+          return response.json();
+        })
+        .then((data) => {
+          console.log("Success:", data);
+          showToast("Student information submitted successfully!", "success");
+          form.reset();
+        })
+        .catch((error) => {
+          console.error("Error:", error);
+          showToast("Failed to submit student information.", "error");
+        });
+
       showToast(
         "Student information submitted successfully!",
         "success"
