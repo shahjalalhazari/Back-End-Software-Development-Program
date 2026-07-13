@@ -1,0 +1,17 @@
+{
+  "name": "software-design-patterns-theory-with-implementations",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "tsc",
+    "start": "node ./dist/app.js",
+    "dev": "ts-node ./src/app.ts",
+    "watch": "tsc -w"
+  },
+  "devDependencies": {
+    "typescript": "^5.6.2",
+    "@types/node": "^20.11.0",
+    "ts-node": "^10.9.1"
+  }
+}
