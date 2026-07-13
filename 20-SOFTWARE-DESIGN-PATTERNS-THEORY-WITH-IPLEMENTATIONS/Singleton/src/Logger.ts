@@ -1,9 +1,29 @@
+// class Logger {
+//     constructor() {
+//         console.log("Logger instance created");
+//     }
+
+//     log(message: string){
+//         console.log(`[LOG]: ${message}`);
+//     }
+// }
+
+
 class Logger {
-    constructor() {
+    private static instance: Logger;
+
+    private constructor() {
         console.log("Logger instance created");
     }
 
-    log(message: string){
+    static getInstance(): Logger{
+        if (!Logger.instance) {
+            Logger.instance = new Logger();
+        }
+        return Logger.instance;
+    }
+
+    log(message: string) {
         console.log(`[LOG]: ${message}`);
     }
 }
