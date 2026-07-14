@@ -1,10 +1,15 @@
-import Database from "./Database";
+import { Database } from "./Database";
 
 class UserService {
     private db: Database;
 
-    constructor() {
-        this.db = new Database();
+    constructor(db: Database) {
+        this.db = db;
+    }
+
+    getUsers() {
+        this.db.connect();
+        return this.db.query("SELECT * FROM Users")
     }
 }
 
