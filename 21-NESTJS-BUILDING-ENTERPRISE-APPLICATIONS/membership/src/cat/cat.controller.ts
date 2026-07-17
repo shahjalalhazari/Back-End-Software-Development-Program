@@ -1,5 +1,6 @@
 import { Body, Controller, Get, HttpCode, Post, Req, Res } from '@nestjs/common';
 import type { Request, Response } from 'express'; // Response and Request will comes from Express.
+import { CatService } from './cat.service';
 
 export class CreateCatDto {
     name: string;
@@ -9,6 +10,8 @@ export class CreateCatDto {
 
 @Controller('cat') // = app.get("/cat") "localhost:5000/cat"
 export class CatController {
+
+    constructor(private catService: CatService) {} // LIKE REGISTER CAT SERVICE IN CONTROLLER
 
     @Get('/all') // a = 'localhost:5000/cat/all'
     getAllCats(@Req() request:Request, @Res() response:Response): Response { // Now this method's type will be Response.
