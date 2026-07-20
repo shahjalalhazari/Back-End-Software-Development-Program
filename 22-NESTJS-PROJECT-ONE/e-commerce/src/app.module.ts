@@ -5,6 +5,7 @@ import { UserModule } from './user/user.module';
 import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SubscriptionModule } from './subscription/subscription.module';
+import { UserSubscriptionModule } from './user_subscription/user_subscription.module';
 
 @Module({
   imports: [
@@ -29,7 +30,8 @@ import { SubscriptionModule } from './subscription/subscription.module';
       inject: [ConfigService],
     }),
     UserModule,
-    SubscriptionModule
+    SubscriptionModule,
+    UserSubscriptionModule
   ],
   controllers: [AppController],
   providers: [AppService],
