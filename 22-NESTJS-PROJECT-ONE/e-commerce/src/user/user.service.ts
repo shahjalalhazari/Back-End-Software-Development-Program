@@ -1,4 +1,9 @@
-import { Injectable, ConflictException } from '@nestjs/common';
+/* eslint-disable @typescript-eslint/no-unused-vars */
+import {
+  Injectable,
+  ConflictException,
+  NotFoundException,
+} from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { Repository } from 'typeorm';
 import * as bcrypt from 'bcrypt';
@@ -33,9 +38,56 @@ export class UserService {
     });
 
     const savedUser = await this.userRepository.save(user);
-    // eslint-disable-next-line @typescript-eslint/no-unused-vars
     const { password, ...safeUser } = savedUser;
 
     return safeUser;
+  }
+
+  async findAll(): Promise<SafeUser[]> {
+    const users = await this.userRepository.find({
+      order: { createdAt: 'DESC' },
+    });
+    return users.map(({ password, ...safeUser }) => safeUser);
+  }
+
+  async findOne(id: string): Promise<SafeUser> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    const { password, ...safeUser } = user;
+    return safeUser;
+  }
+
+  async update(
+    id: string,
+    updateData: Partial<CreateUserDto>,
+  ): Promise<SafeUser> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+
+    if (updateData.password) {
+      user.password = await bcrypt.hash(updateData.password, 10);
+    }
+
+    if (updateData.email !== undefined) user.email = updateData.email;
+    if (updateData.firstName !== undefined)
+      user.firstName = updateData.firstName;
+    if (updateData.lastName !== undefined) user.lastName = updateData.lastName;
+    if (updateData.role !== undefined) user.role = updateData.role;
+
+    const saved = await this.userRepository.save(user);
+    const { password, ...safeUser } = saved;
+    return safeUser;
+  }
+
+  async remove(id: string): Promise<void> {
+    const user = await this.userRepository.findOne({ where: { id } });
+    if (!user) {
+      throw new NotFoundException(`User with id ${id} not found`);
+    }
+    await this.userRepository.remove(user);
   }
 }
