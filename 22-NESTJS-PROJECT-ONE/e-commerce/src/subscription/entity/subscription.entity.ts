@@ -37,9 +37,6 @@ export class Subscription {
   @Column()
   price: number;
 
-  @Column()
-  currency: string;
-
   @Column({
     type: 'enum',
     enum: SubscriptionPlan,
@@ -57,12 +54,6 @@ export class Subscription {
 
   @Column({ default: false })
   autoRenew: boolean;
-
-  @Column({ type: 'timestamp' })
-  startDate: Date;
-
-  @Column({ type: 'timestamp', nullable: true })
-  endDate: Date;
 
   @CreateDateColumn()
   createdAt: Date;

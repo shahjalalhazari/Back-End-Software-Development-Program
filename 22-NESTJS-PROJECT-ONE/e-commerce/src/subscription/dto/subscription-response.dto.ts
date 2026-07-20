@@ -8,11 +8,8 @@ export class SubscriptionResponseDto {
   name?: string;
   description?: string;
   price?: number;
-  currency?: string;
   plan?: SubscriptionPlan;
   status?: SubscriptionStatus;
-  startDate?: Date;
-  endDate?: Date;
   autoRenew?: boolean;
   createdAt?: Date;
   updatedAt?: Date;

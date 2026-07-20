@@ -27,10 +27,6 @@ export class CreateSubscriptionDto {
   price: number;
 
   @IsNotEmpty()
-  @IsString()
-  currency: string;
-
-  @IsNotEmpty()
   @IsEnum(SubscriptionPlan)
   plan: SubscriptionPlan;
 

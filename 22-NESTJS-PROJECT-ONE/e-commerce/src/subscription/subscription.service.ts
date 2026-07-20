@@ -57,7 +57,10 @@ export class SubscriptionService {
   }
 
   async delete(id: string): Promise<void> {
-    const subscription = await this.findById(id);
+    const subscription = await this.subscriptionRepository.findById(id);
+    if (!subscription) {
+      throw new NotFoundException(`Subscription with id ${id} not found`);
+    }
     await this.subscriptionRepository.remove(subscription);
   }
 }
