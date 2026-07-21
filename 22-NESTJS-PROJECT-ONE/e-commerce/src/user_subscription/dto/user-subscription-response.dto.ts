@@ -5,6 +5,7 @@ export class UserSubscriptionResponseDto {
   userId?: string;
   subscriptionId?: string;
   status?: SubscriptionStatus;
+  autoRenew?: boolean;
   startDate?: Date;
   endDate?: Date;
   paymentId?: string;

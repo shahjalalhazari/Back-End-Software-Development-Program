@@ -43,6 +43,9 @@ export class UserSubscription {
   @Index()
   status: SubscriptionStatus;
 
+  @Column({ default: false })
+  autoRenew: boolean;
+
   @Column({ type: 'timestamp' })
   startDate: Date;
 
