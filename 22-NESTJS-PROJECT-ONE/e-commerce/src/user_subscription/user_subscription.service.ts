@@ -56,6 +56,70 @@ export class UserSubscriptionService {
     return new UserSubscriptionResponseDto(userSubscription);
   }
 
+  async findByUserId(userId: string): Promise<UserSubscriptionResponseDto[]> {
+    const userSubscriptions = await this.repository.findByUserId(userId);
+    return userSubscriptions.map(
+      (item) => new UserSubscriptionResponseDto(item),
+    );
+  }
+
+  async findBySubscriptionId(
+    subscriptionId: string,
+  ): Promise<UserSubscriptionResponseDto[]> {
+    const userSubscriptions = await this.repository.findBySubscriptionId(subscriptionId);
+    return userSubscriptions.map(
+      (item) => new UserSubscriptionResponseDto(item),
+    );
+  }
+
+  async findExpiredSubscriptions(): Promise<UserSubscriptionResponseDto[]> {
+    const userSubscriptions = await this.repository.findExpiredSubscriptions();
+    return userSubscriptions.map(
+      (item) => new UserSubscriptionResponseDto(item),
+    );
+  }
+
+  async renew(
+    id: string,
+    newEndDate: string,
+  ): Promise<UserSubscriptionResponseDto> {
+    const existing = await this.repository.findById(id);
+
+    if (!existing) {
+      throw new NotFoundException(`User subscription with ID ${id} not found`);
+    }
+
+    existing.endDate = new Date(newEndDate);
+    existing.status = SubscriptionStatus.ACTIVE;
+
+    const updated = await this.repository.update(existing);
+    return new UserSubscriptionResponseDto(updated);
+  }
+
+  async expire(id: string): Promise<UserSubscriptionResponseDto> {
+    const existing = await this.repository.findById(id);
+
+    if (!existing) {
+      throw new NotFoundException(`User subscription with ID ${id} not found`);
+    }
+
+    existing.status = SubscriptionStatus.EXPIRED;
+    const updated = await this.repository.update(existing);
+    return new UserSubscriptionResponseDto(updated);
+  }
+
+  async cancel(id: string): Promise<UserSubscriptionResponseDto> {
+    const existing = await this.repository.findById(id);
+
+    if (!existing) {
+      throw new NotFoundException(`User subscription with ID ${id} not found`);
+    }
+
+    existing.status = SubscriptionStatus.CANCELLED;
+    const updated = await this.repository.update(existing);
+    return new UserSubscriptionResponseDto(updated);
+  }
+
   async update(
     id: string,
     dto: UpdateUserSubscriptionDto,

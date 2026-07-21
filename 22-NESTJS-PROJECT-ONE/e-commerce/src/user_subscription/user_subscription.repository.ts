@@ -1,7 +1,7 @@
 /* eslint-disable prettier/prettier */
 import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
-import { Repository } from 'typeorm';
+import { LessThan, Repository } from 'typeorm';
 import { UserSubscription } from './entity/user_subscription.entity';
 
 @Injectable()
@@ -31,6 +31,27 @@ export class UserSubscriptionRepository {
   async findByUserAndSubscription(userId: string, subscriptionId: string): Promise<UserSubscription | null> {
     return await this.repository.findOne({
       where: { userId, subscriptionId },
+    });
+  }
+
+  async findByUserId(userId: string): Promise<UserSubscription[]> {
+    return await this.repository.find({
+      where: { userId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findBySubscriptionId(subscriptionId: string): Promise<UserSubscription[]> {
+    return await this.repository.find({
+      where: { subscriptionId },
+      order: { createdAt: 'DESC' },
+    });
+  }
+
+  async findExpiredSubscriptions(): Promise<UserSubscription[]> {
+    return await this.repository.find({
+      where: { endDate: LessThan(new Date()) },
+      order: { endDate: 'ASC' },
     });
   }
 
