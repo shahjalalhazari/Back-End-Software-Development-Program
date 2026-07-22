@@ -66,7 +66,8 @@ export class UserSubscriptionService {
   async findBySubscriptionId(
     subscriptionId: string,
   ): Promise<UserSubscriptionResponseDto[]> {
-    const userSubscriptions = await this.repository.findBySubscriptionId(subscriptionId);
+    const userSubscriptions =
+      await this.repository.findBySubscriptionId(subscriptionId);
     return userSubscriptions.map(
       (item) => new UserSubscriptionResponseDto(item),
     );
@@ -133,7 +134,8 @@ export class UserSubscriptionService {
     const updated = await this.repository.update({
       ...existing,
       ...dto,
-      autoRenew: dto.autoRenew !== undefined ? dto.autoRenew : existing.autoRenew,
+      autoRenew:
+        dto.autoRenew !== undefined ? dto.autoRenew : existing.autoRenew,
       endDate: dto.endDate ? new Date(dto.endDate) : existing.endDate,
     });
 
