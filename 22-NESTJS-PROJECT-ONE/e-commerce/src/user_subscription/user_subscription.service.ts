@@ -8,10 +8,31 @@ import { UpdateUserSubscriptionDto } from './dto/update-user-subscription.dto';
 import { UserSubscriptionResponseDto } from './dto/user-subscription-response.dto';
 import { SubscriptionStatus } from '../subscription/entity/subscription.entity';
 import { UserSubscriptionRepository } from './user_subscription.repository';
+import { StoreRepository } from '../store/store.repository';
+import { StoreStatus } from '../store/entity/store.entity';
 
 @Injectable()
 export class UserSubscriptionService {
-  constructor(private readonly repository: UserSubscriptionRepository) {}
+  constructor(
+    private readonly repository: UserSubscriptionRepository,
+    private readonly storeRepository: StoreRepository,
+  ) {}
+
+  private async syncStoreStatusForUser(
+    userId: string,
+    status: SubscriptionStatus,
+  ): Promise<void> {
+    const storeStatus =
+      status === SubscriptionStatus.ACTIVE
+        ? StoreStatus.ACTIVE
+        : StoreStatus.INACTIVE;
+
+    const stores = await this.storeRepository.findByUserId(userId);
+    for (const store of stores) {
+      store.status = storeStatus;
+      await this.storeRepository.update(store);
+    }
+  }
 
   async subscribe(
     dto: CreateUserSubscriptionDto,
@@ -35,6 +56,8 @@ export class UserSubscriptionService {
       endDate: dto.endDate ? new Date(dto.endDate) : undefined,
       autoRenew: dto.autoRenew ?? false,
     });
+
+    await this.syncStoreStatusForUser(dto.userId, userSubscription.status);
 
     return new UserSubscriptionResponseDto(userSubscription);
   }
@@ -94,6 +117,7 @@ export class UserSubscriptionService {
     existing.status = SubscriptionStatus.ACTIVE;
 
     const updated = await this.repository.update(existing);
+    await this.syncStoreStatusForUser(existing.userId, updated.status);
     return new UserSubscriptionResponseDto(updated);
   }
 
@@ -106,6 +130,7 @@ export class UserSubscriptionService {
 
     existing.status = SubscriptionStatus.EXPIRED;
     const updated = await this.repository.update(existing);
+    await this.syncStoreStatusForUser(existing.userId, updated.status);
     return new UserSubscriptionResponseDto(updated);
   }
 
@@ -118,6 +143,7 @@ export class UserSubscriptionService {
 
     existing.status = SubscriptionStatus.CANCELLED;
     const updated = await this.repository.update(existing);
+    await this.syncStoreStatusForUser(existing.userId, updated.status);
     return new UserSubscriptionResponseDto(updated);
   }
 
@@ -138,6 +164,8 @@ export class UserSubscriptionService {
         dto.autoRenew !== undefined ? dto.autoRenew : existing.autoRenew,
       endDate: dto.endDate ? new Date(dto.endDate) : existing.endDate,
     });
+
+    await this.syncStoreStatusForUser(existing.userId, updated.status);
 
     return new UserSubscriptionResponseDto(updated);
   }

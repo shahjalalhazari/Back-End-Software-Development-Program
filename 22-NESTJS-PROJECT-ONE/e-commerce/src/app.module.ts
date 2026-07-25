@@ -6,6 +6,7 @@ import { ConfigModule, ConfigService } from '@nestjs/config';
 import { TypeOrmModule } from '@nestjs/typeorm';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { UserSubscriptionModule } from './user_subscription/user_subscription.module';
+import { StoreModule } from './store/store.module';
 
 @Module({
   imports: [
@@ -31,7 +32,8 @@ import { UserSubscriptionModule } from './user_subscription/user_subscription.mo
     }),
     UserModule,
     SubscriptionModule,
-    UserSubscriptionModule
+    UserSubscriptionModule,
+    StoreModule,
   ],
   controllers: [AppController],
   providers: [AppService],
