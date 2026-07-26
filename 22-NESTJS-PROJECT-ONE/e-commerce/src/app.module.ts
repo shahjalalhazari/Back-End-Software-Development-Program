@@ -7,6 +7,7 @@ import { TypeOrmModule } from '@nestjs/typeorm';
 import { SubscriptionModule } from './subscription/subscription.module';
 import { UserSubscriptionModule } from './user_subscription/user_subscription.module';
 import { StoreModule } from './store/store.module';
+import { CategoryModule } from './category/category.module';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { StoreModule } from './store/store.module';
     SubscriptionModule,
     UserSubscriptionModule,
     StoreModule,
+    CategoryModule,
   ],
   controllers: [AppController],
   providers: [AppService],
