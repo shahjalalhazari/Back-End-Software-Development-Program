@@ -8,6 +8,7 @@ import { SubscriptionModule } from './subscription/subscription.module';
 import { UserSubscriptionModule } from './user_subscription/user_subscription.module';
 import { StoreModule } from './store/store.module';
 import { CategoryModule } from './category/category.module';
+import { ProductModule } from './product/product.module';
 
 @Module({
   imports: [
@@ -36,6 +37,7 @@ import { CategoryModule } from './category/category.module';
     UserSubscriptionModule,
     StoreModule,
     CategoryModule,
+    ProductModule,
   ],
   controllers: [AppController],
   providers: [AppService],
