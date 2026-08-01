@@ -1,0 +1,62 @@
+Root cause
+
+nslookup / Resolve-DnsName কাজ করে কিন্তু Node fail করে — এটার কারণ হলো দুইটা আলাদা resolver:
+
+nslookup এবং Compass (C# / .NET) Windows-এর DNS Client service ব্যবহার করে, যেটা সব adapter-এর DNS list, cache, fallback ordering — সব handle করে।
+Node.js-এর resolveSrv() bundled c-ares ব্যবহার করে, যেটা Windows registry থেকে নিজে DNS server list পড়ে এবং সাধারণত প্রথম adapter-এর DNS server-এ direct UDP/53 query পাঠায়।
+
+ECONNREFUSED মানে DNS server actively refuse করেছে বা ওই IP-তে 53 port-এ কিছু listen-ই করছে না। প্রায় সবসময়ই এটা হয় যখন c-ares কোনো virtual/stale adapter-এর DNS তুলে নেয় — WSL2, Docker Desktop, VMware/VirtualBox host-only, Hyper-V, VPN (Tailscale/OpenVPN/Proton), বা কোনো local DNS proxy (Pi-hole/AdGuard/Acrylic) যেটা বন্ধ আছে কিন্তু 127.0.0.1 registry-তে রয়ে গেছে।
+
+Step 1 — confirm করুন
+js
+// test-dns.js
+const dns = require('node:dns');
+console.log('Node is using:', dns.getServers());
+
+dns.promises.resolveSrv('_mongodb._tcp.cluster0.msnuvxp.mongodb.net')
+  .then(console.log)
+  .catch(e => console.error('FAIL:', e.code));
+powershell
+node test-dns.js
+Get-DnsClientServerAddress -AddressFamily IPv4 | Format-Table
+
+dns.getServers()-এর output-টা Get-DnsClientServerAddress-এর সাথে মিলিয়ে দেখুন। ৯০% সম্ভাবনা Node এমন একটা IP দেখাবে (192.168.56.1, 172.x.x.x, 127.0.0.1, বা কোনো fe80:: IPv6) যেটা আপনার actual router/ISP DNS না। এখানেই খেল খতম।
+
+Step 2 — Fix
+
+সবচেয়ে দ্রুত fix (app-level, guaranteed): Node-কে explicitly DNS দিয়ে দিন, main.ts-এ সবার আগে —
+
+ts
+import * as dns from 'node:dns';
+dns.setServers(['1.1.1.1', '8.8.8.8']);
+
+import { NestFactory } from '@nestjs/core';
+// ...বাকি imports
+
+⚠️ setServers() অবশ্যই Mongoose connect হওয়ার আগে call হতে হবে। NestJS-এ import hoisting-এর কারণে AppModule import-এর উপরে রাখলেও কখনো কখনো late হয়ে যায় — নিশ্চিত হতে চাইলে আলাদা dns-setup.ts file বানিয়ে main.ts-এর একদম প্রথম line-এ import './dns-setup'; করুন।
+
+Permanent fix (system-level): virtual adapter-গুলোর interface metric ঠিক করুন বা unused গুলো disable করুন —
+
+powershell
+Get-NetIPInterface -AddressFamily IPv4 | Sort-Object InterfaceMetric | Format-Table ifIndex, InterfaceAlias, InterfaceMetric
+# আপনার আসল adapter-কে সবচেয়ে কম metric দিন
+Set-NetIPInterface -InterfaceAlias "Wi-Fi" -InterfaceMetric 5
+
+আর active adapter-এ manually 1.1.1.1 / 8.8.8.8 set করে দিন।
+
+Bypass (SRV পুরো এড়িয়ে যাওয়া): Atlas UI → Connect → Drivers → driver version dropdown-এ "Node.js 2.2.12 or later" select করলে legacy mongodb:// seed-list string পাবেন, যেটাতে SRV lookup লাগেই না:
+
+mongodb://host1:27017,host2:27017,host3:27017/lead-ai?ssl=true&replicaSet=atlas-xxxxx-shard-0&authSource=admin&retryWrites=true&w=majority
+
+Dev-এ unblock হওয়ার জন্য ভালো, তবে production-এ SRV-ই রাখা উচিত — Atlas cluster topology change করলে seed list stale হয়ে যেতে পারে।
+
+যদি এতেও না হয়
+
+Corporate network/ISP অনেক সময় port 53-এ outbound SRV query block করে বা TCP fallback আটকায়। Test:
+
+powershell
+Resolve-DnsName -Name _mongodb._tcp.cluster0.msnuvxp.mongodb.net -Type SRV -Server 1.1.1.1
+
+এটা fail করলে network-level block, তখন mobile hotspot দিয়ে test করে confirm করুন।
+
+আপনার dns.getServers()-এর output-টা share করলে exact কোন adapter culprit সেটা বলে দিতে পারব।

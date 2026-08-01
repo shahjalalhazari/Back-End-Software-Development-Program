@@ -1,0 +1,650 @@
+{
+  "info": {
+    "_postman_id": "e-commerce-api-collection",
+    "name": "E-Commerce API",
+    "description": "Complete Postman collection for the NestJS e-commerce project.\n\nBase URL defaults to `http://localhost:3000`. Update collection variables after creating resources (userId, storeId, etc.).\n\n**Modules:** App, User, Subscription, User Subscription, Store, Category (Public + Admin).\n\n**Note:** Product module has no endpoints implemented yet.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+  },
+  "variable": [
+    {
+      "key": "baseUrl",
+      "value": "http://localhost:3000"
+    },
+    {
+      "key": "userId",
+      "value": "00000000-0000-0000-0000-000000000001"
+    },
+    {
+      "key": "subscriptionId",
+      "value": "00000000-0000-0000-0000-000000000002"
+    },
+    {
+      "key": "userSubscriptionId",
+      "value": "00000000-0000-0000-0000-000000000003"
+    },
+    {
+      "key": "storeId",
+      "value": "00000000-0000-0000-0000-000000000004"
+    },
+    {
+      "key": "storeSlug",
+      "value": "my-store"
+    },
+    {
+      "key": "categoryId",
+      "value": "00000000-0000-0000-0000-000000000005"
+    },
+    {
+      "key": "categorySlug",
+      "value": "electronics"
+    }
+  ],
+  "item": [
+    {
+      "name": "App",
+      "item": [
+        {
+          "name": "Health Check",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/",
+              "host": ["{{baseUrl}}"],
+              "path": [""]
+            },
+            "description": "Returns a hello message from the root endpoint."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User",
+      "item": [
+        {
+          "name": "Create User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"email\": \"vendor@example.com\",\n  \"password\": \"password123\",\n  \"firstName\": \"John\",\n  \"lastName\": \"Doe\",\n  \"role\": \"VENDOR\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user",
+              "host": ["{{baseUrl}}"],
+              "path": ["user"]
+            },
+            "description": "Create a new user.\n\n**Roles:** `SYSTEM_ADMIN`, `CUSTOMER`, `VENDOR`"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Users",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user",
+              "host": ["{{baseUrl}}"],
+              "path": ["user"]
+            },
+            "description": "List all users."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "{{userId}}"]
+            },
+            "description": "Get a single user by UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"firstName\": \"Jane\",\n  \"lastName\": \"Smith\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "{{userId}}"]
+            },
+            "description": "Partially update a user."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user", "{{userId}}"]
+            },
+            "description": "Delete a user. Returns 204 No Content."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Subscription",
+      "item": [
+        {
+          "name": "Create Subscription Plan",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Basic Plan\",\n  \"description\": \"Basic vendor subscription plan\",\n  \"price\": 9.99,\n  \"plan\": \"BASIC\",\n  \"status\": \"ACTIVE\",\n  \"autoRenew\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscriptions"]
+            },
+            "description": "Create a subscription plan.\n\n**Plans:** `BASIC`, `STANDARD`, `PREMIUM`\n\n**Status:** `ACTIVE`, `EXPIRED`, `CANCELLED`, `SUSPENDED`"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Subscription Plans",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscriptions"]
+            },
+            "description": "List all subscription plans."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Subscription Plan by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/{{subscriptionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscriptions", "{{subscriptionId}}"]
+            },
+            "description": "Get a subscription plan by UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Subscription Plan",
+          "request": {
+            "method": "PUT",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"Basic Plan Updated\",\n  \"description\": \"Updated description\",\n  \"price\": 14.99,\n  \"plan\": \"STANDARD\",\n  \"autoRenew\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/{{subscriptionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscriptions", "{{subscriptionId}}"]
+            },
+            "description": "Update a subscription plan."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete Subscription Plan",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/subscriptions/{{subscriptionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["subscriptions", "{{subscriptionId}}"]
+            },
+            "description": "Delete a subscription plan. Returns 204 No Content."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "User Subscription",
+      "item": [
+        {
+          "name": "Subscribe User",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"subscriptionId\": \"{{subscriptionId}}\",\n  \"status\": \"ACTIVE\",\n  \"startDate\": \"2026-01-01T00:00:00.000Z\",\n  \"endDate\": \"2027-01-01T00:00:00.000Z\",\n  \"autoRenew\": true\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user-subscription",
+              "host": ["{{baseUrl}}"],
+              "path": ["user-subscription"]
+            },
+            "description": "Assign a subscription plan to a user."
+          },
+          "response": []
+        },
+        {
+          "name": "Get All User Subscriptions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user-subscription",
+              "host": ["{{baseUrl}}"],
+              "path": ["user-subscription"]
+            },
+            "description": "List all user subscriptions."
+          },
+          "response": []
+        },
+        {
+          "name": "Get User Subscription by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user-subscription/{{userSubscriptionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user-subscription", "{{userSubscriptionId}}"]
+            },
+            "description": "Get a user subscription by UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Subscriptions by User ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user-subscription/user/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user-subscription", "user", "{{userId}}"]
+            },
+            "description": "Get all subscriptions for a specific user."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Subscriptions by Plan ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user-subscription/subscription/{{subscriptionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user-subscription", "subscription", "{{subscriptionId}}"]
+            },
+            "description": "Get all user subscriptions for a specific plan."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Expired Subscriptions",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user-subscription/expired",
+              "host": ["{{baseUrl}}"],
+              "path": ["user-subscription", "expired"]
+            },
+            "description": "List all expired user subscriptions."
+          },
+          "response": []
+        },
+        {
+          "name": "Renew User Subscription",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"endDate\": \"2028-01-01T00:00:00.000Z\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user-subscription/{{userSubscriptionId}}/renew",
+              "host": ["{{baseUrl}}"],
+              "path": ["user-subscription", "{{userSubscriptionId}}", "renew"]
+            },
+            "description": "Renew a user subscription with a new end date."
+          },
+          "response": []
+        },
+        {
+          "name": "Expire User Subscription",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user-subscription/{{userSubscriptionId}}/expire",
+              "host": ["{{baseUrl}}"],
+              "path": ["user-subscription", "{{userSubscriptionId}}", "expire"]
+            },
+            "description": "Mark a user subscription as expired."
+          },
+          "response": []
+        },
+        {
+          "name": "Cancel User Subscription",
+          "request": {
+            "method": "PATCH",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user-subscription/{{userSubscriptionId}}/cancel",
+              "host": ["{{baseUrl}}"],
+              "path": ["user-subscription", "{{userSubscriptionId}}", "cancel"]
+            },
+            "description": "Cancel a user subscription."
+          },
+          "response": []
+        },
+        {
+          "name": "Update User Subscription",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"status\": \"ACTIVE\",\n  \"endDate\": \"2027-06-01T00:00:00.000Z\",\n  \"autoRenew\": false\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/user-subscription/{{userSubscriptionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user-subscription", "{{userSubscriptionId}}"]
+            },
+            "description": "Update a user subscription."
+          },
+          "response": []
+        },
+        {
+          "name": "Delete User Subscription",
+          "request": {
+            "method": "DELETE",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/user-subscription/{{userSubscriptionId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["user-subscription", "{{userSubscriptionId}}"]
+            },
+            "description": "Remove a user subscription. Returns 204 No Content."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Store",
+      "item": [
+        {
+          "name": "Create Store",
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"userId\": \"{{userId}}\",\n  \"name\": \"My Store\",\n  \"slug\": \"my-store\",\n  \"description\": \"A sample store description\",\n  \"logo\": \"https://example.com/logo.png\",\n  \"storeEmail\": \"store@example.com\",\n  \"storePhoneNumber\": \"+1234567890\",\n  \"address\": \"123 Main Street, City\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/store",
+              "host": ["{{baseUrl}}"],
+              "path": ["store"]
+            },
+            "description": "Create a new store for a vendor.\n\n**Status values:** `PENDING_APPROVAL`, `ACTIVE`, `INACTIVE`, `SUSPENDED`, `REJECTED`"
+          },
+          "response": []
+        },
+        {
+          "name": "Get All Stores",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/store",
+              "host": ["{{baseUrl}}"],
+              "path": ["store"]
+            },
+            "description": "List all stores."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Store by Slug",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/store/slug/{{storeSlug}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["store", "slug", "{{storeSlug}}"]
+            },
+            "description": "Get a store by its slug."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Stores by User ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/store/user/{{userId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["store", "user", "{{userId}}"]
+            },
+            "description": "Get all stores owned by a user."
+          },
+          "response": []
+        },
+        {
+          "name": "Get Stores by User ID and Status",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/store/user/{{userId}}/status/ACTIVE",
+              "host": ["{{baseUrl}}"],
+              "path": ["store", "user", "{{userId}}", "status", "ACTIVE"]
+            },
+            "description": "Get stores for a user filtered by status.\n\n**Status:** `PENDING_APPROVAL`, `ACTIVE`, `INACTIVE`, `SUSPENDED`, `REJECTED`"
+          },
+          "response": []
+        },
+        {
+          "name": "Get Store by ID",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{baseUrl}}/store/{{storeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["store", "{{storeId}}"]
+            },
+            "description": "Get a store by UUID."
+          },
+          "response": []
+        },
+        {
+          "name": "Update Store",
+          "request": {
+            "method": "PATCH",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"name\": \"My Updated Store\",\n  \"description\": \"Updated store description\",\n  \"status\": \"ACTIVE\",\n  \"storePhoneNumber\": \"+0987654321\"\n}"
+            },
+            "url": {
+              "raw": "{{baseUrl}}/store/{{storeId}}",
+              "host": ["{{baseUrl}}"],
+              "path": ["store", "{{storeId}}"]
+            },
+            "description": "Partially update a store."
+          },
+          "response": []
+        }
+      ]
+    },
+    {
+      "name": "Category",
+      "item": [
+        {
+          "name": "Public",
+          "item": [
+            {
+              "name": "List Active Categories",
+              "request": {
+                "method": "GET",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/categories",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["categories"]
+                },
+                "description": "Public endpoint. Returns all active categories ordered by name."
+              },
+              "response": []
+            }
+          ]
+        },
+        {
+          "name": "Admin",
+          "item": [
+            {
+              "name": "Create Category",
+              "request": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Electronics\",\n  \"slug\": \"electronics\",\n  \"description\": \"Electronic devices and accessories\",\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/admin/categories",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "categories"]
+                },
+                "description": "Admin endpoint. Create a new category."
+              },
+              "response": []
+            },
+            {
+              "name": "Update Category",
+              "request": {
+                "method": "PATCH",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"name\": \"Electronics & Gadgets\",\n  \"description\": \"Updated category description\",\n  \"isActive\": true\n}"
+                },
+                "url": {
+                  "raw": "{{baseUrl}}/admin/categories/{{categoryId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "categories", "{{categoryId}}"]
+                },
+                "description": "Admin endpoint. Update a category by UUID."
+              },
+              "response": []
+            },
+            {
+              "name": "Delete Category",
+              "request": {
+                "method": "DELETE",
+                "header": [],
+                "url": {
+                  "raw": "{{baseUrl}}/admin/categories/{{categoryId}}",
+                  "host": ["{{baseUrl}}"],
+                  "path": ["admin", "categories", "{{categoryId}}"]
+                },
+                "description": "Admin endpoint. Delete a category. Returns 204 No Content."
+              },
+              "response": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "Product",
+      "description": "Product module is registered but has no endpoints implemented yet. Endpoints from the PRD (store owner CRUD, public listing, admin hide/unhide) will be added here once implemented.",
+      "item": []
+    }
+  ]
+}

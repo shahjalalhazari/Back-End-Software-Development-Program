@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unsafe-call */
 import {
   ConflictException,
+  ForbiddenException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
@@ -9,10 +10,18 @@ import { Store, StoreStatus } from './entity/store.entity';
 import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { StoreResponseDto } from './dto/store-response.dto';
+import { UserRole } from 'src/user/entity/user.entity';
+import { SubscriptionStatus } from 'src/subscription/entity/subscription.entity';
+import { UserSubscriptionRepository } from './../user_subscription/user_subscription.repository';
+import { UserService } from './../user/user.service';
 
 @Injectable()
 export class StoreService {
-  constructor(private readonly storeRepository: StoreRepository) {}
+  constructor(
+    private readonly storeRepository: StoreRepository,
+    private readonly userService: UserService,
+    private readonly userSubscriptionRepository: UserSubscriptionRepository
+  ) {}
 
   private async getStoreEntityById(id: string): Promise<Store> {
     const store = await this.storeRepository.findById(id);
@@ -23,7 +32,7 @@ export class StoreService {
   }
 
   private async validateVendorCanManageStore(userId: string): Promise<void> {
-    const user = await this.userRepository.findOne({ where: { id: userId } });
+    const user = await this.userService.findOne(userId);
     if (!user) {
       throw new NotFoundException(`User with id ${userId} not found`);
     }
@@ -32,10 +41,10 @@ export class StoreService {
       throw new ForbiddenException('Only vendors can create or manage a store');
     }
 
-    const activeSubscription = await this.userSubscriptionRepository.findOne({
-      where: { userId, status: SubscriptionStatus.ACTIVE },
-      order: { createdAt: 'DESC' },
-    });
+    const activeSubscription =
+      await this.userSubscriptionRepository.findActiveSubscriptionByUserId(
+        userId,
+      );
 
     if (!activeSubscription) {
       throw new ForbiddenException(
@@ -93,7 +102,6 @@ export class StoreService {
     const store = await this.storeRepository.create({
       ...createStoreDto,
       slug,
-      status: StoreStatus.ACTIVE,
     });
 
     return new StoreResponseDto(store);
@@ -138,9 +146,6 @@ export class StoreService {
     await this.validateVendorCanManageStore(store.userId);
 
     Object.assign(store, updateStoreDto);
-    if (!updateStoreDto.status) {
-      store.status = StoreStatus.ACTIVE;
-    }
 
     const updatedStore = await this.storeRepository.update(store);
     return new StoreResponseDto(updatedStore);

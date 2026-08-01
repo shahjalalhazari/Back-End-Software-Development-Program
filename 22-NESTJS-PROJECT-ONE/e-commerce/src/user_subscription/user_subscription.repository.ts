@@ -3,6 +3,7 @@ import { Injectable } from '@nestjs/common';
 import { InjectRepository } from '@nestjs/typeorm';
 import { LessThan, Repository } from 'typeorm';
 import { UserSubscription } from './entity/user_subscription.entity';
+import { SubscriptionStatus } from 'src/subscription/entity/subscription.entity';
 
 @Injectable()
 export class UserSubscriptionRepository {
@@ -54,6 +55,20 @@ export class UserSubscriptionRepository {
       order: { endDate: 'ASC' },
     });
   }
+
+  async findActiveSubscriptionByUserId(
+  userId: string,
+): Promise<UserSubscription | null> {
+  return this.repository.findOne({
+    where: {
+      userId,
+      status: SubscriptionStatus.ACTIVE,
+    },
+    order: {
+      createdAt: 'DESC',
+    },
+  });
+}
 
   async update(userSubscription: UserSubscription): Promise<UserSubscription> {
     return await this.repository.save(userSubscription);
