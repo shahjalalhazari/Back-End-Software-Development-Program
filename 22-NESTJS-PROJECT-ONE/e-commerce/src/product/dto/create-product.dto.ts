@@ -12,16 +12,18 @@ import {
 
 export class CreateProductDto {
   @IsString()
+  @IsNotEmpty()
+  storeId: string;
+
+  @IsString()
   @Length(3, 200)
   @IsNotEmpty()
   name: string;
-
 
   @IsString()
   @MaxLength(5000)
   @IsNotEmpty()
   description: string;
-
 
   @IsString()
   @MaxLength(100)
@@ -29,17 +31,14 @@ export class CreateProductDto {
   @IsNotEmpty()
   sku: string
 
-
   @IsString()
   @IsOptional()
   slug?: string;
-
 
   @IsNumber()
   @Min(0)
   @IsNotEmpty()
   price: number;
-
 
   @IsNumber()
   @Min(0)

@@ -11,7 +11,6 @@ import { CreateStoreDto } from './dto/create-store.dto';
 import { UpdateStoreDto } from './dto/update-store.dto';
 import { StoreResponseDto } from './dto/store-response.dto';
 import { UserRole } from 'src/user/entity/user.entity';
-import { SubscriptionStatus } from 'src/subscription/entity/subscription.entity';
 import { UserSubscriptionRepository } from './../user_subscription/user_subscription.repository';
 import { UserService } from './../user/user.service';
 

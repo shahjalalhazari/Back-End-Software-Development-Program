@@ -41,11 +41,9 @@ export class Product {
   description: string;
 
   @Column({ unique: true })
-  @Index()
   sku: string;
 
   @Column({ unique: true, nullable: true })
-  @Index()
   slug?: string;
 
   @Column({

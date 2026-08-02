@@ -1,7 +1,7 @@
-import { Injectable } from "@nestjs/common";
-import { InjectRepository } from "@nestjs/typeorm";
-import { Product } from "../entity/product.entity";
-import { Repository } from "typeorm";
+import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
+import { Product } from '../entity/product.entity';
+import { Repository } from 'typeorm';
 
 @Injectable()
 export class ProductRepository {
@@ -18,6 +18,11 @@ export class ProductRepository {
   // SAVE PRODUCT
   save(product: Product): Promise<Product> {
     return this.productRepository.save(product);
+  }
+
+  // FIND ALL PRODUCT
+  findAll(): Promise<Product[]> {
+    return this.productRepository.find();
   }
 
   // FIND PRODUCT BY ID
