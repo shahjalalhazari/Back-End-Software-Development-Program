@@ -4,6 +4,7 @@ import {
   Get,
   HttpCode,
   HttpStatus,
+  Param,
   Post,
 } from '@nestjs/common';
 import { ProductService } from './product.service';
@@ -26,5 +27,17 @@ export class ProductController {
   @HttpCode(HttpStatus.OK)
   async findAll(): Promise<ProductResponseDto[]> {
     return this.productService.findAll();
+  }
+
+  @Get(':id')
+  @HttpCode(HttpStatus.OK)
+  async findById(@Param('id') id: string): Promise<ProductResponseDto> {
+    return this.productService.findById(id);
+  }
+
+  @Get('slug/:slug')
+  @HttpCode(HttpStatus.OK)
+  async findBySlug(@Param('slug') slug: string): Promise<ProductResponseDto> {
+    return this.productService.findBySlug(slug);
   }
 }

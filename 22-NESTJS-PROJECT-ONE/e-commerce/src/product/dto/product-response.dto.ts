@@ -2,6 +2,7 @@ import { ProductStatus } from "../entity/product.entity";
 
 export class ProductResponseDto {
   id: string;
+  storeId: string;
   name: string;
   description: string;
   sku: string;

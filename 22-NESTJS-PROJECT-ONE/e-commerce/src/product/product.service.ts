@@ -3,6 +3,7 @@ import { CreateProductDto } from './dto/create-product.dto';
 import { ProductResponseDto } from './dto/product-response.dto';
 import { StoreService } from 'src/store/store.service';
 import { ProductRepository } from './repository/product.repository';
+import { ProductMapper } from './mapper/product.mapper';
 
 @Injectable()
 export class ProductService {
@@ -55,15 +56,35 @@ export class ProductService {
 
     const savedProduct = await this.productRepository.save(product);
 
-    return new ProductResponseDto(savedProduct);
+    return ProductMapper.toResponse(savedProduct);
   }
 
   // FIND ALL PRODUCT
   async findAll(): Promise<ProductResponseDto[]> {
     const products = await this.productRepository.findAll();
 
-    return products.map(
-      (product) => new ProductResponseDto(product)
-    );
+    return ProductMapper.toResponseList(products);
+  }
+
+  // FIND PRODUCT BY ID
+  async findById(id: string): Promise<ProductResponseDto> {
+    const product = await this.productRepository.findById(id);
+
+    if (!product) {
+      throw new NotFoundException('Product not found!');
+    }
+
+    return ProductMapper.toResponse(product);
+  }
+
+  // FIND PRODUCT BY SLUG
+  async findBySlug(slug: string): Promise<ProductResponseDto> {
+    const product = await this.productRepository.findBySlug(slug);
+
+    if (!product) {
+      throw new NotFoundException('Product not found!');
+    }
+
+    return ProductMapper.toResponse(product);
   }
 }
