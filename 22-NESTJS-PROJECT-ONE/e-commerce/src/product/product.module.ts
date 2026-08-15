@@ -15,6 +15,7 @@ import { ProductCategoryRepository } from './repository/product-category.reposit
 import { ProductTagRepository } from './repository/product-tag.repository';
 import { ProductTagAssignmentRepository } from './repository/product-tag-assignment.repository';
 import { ProductImageRepository } from './repository/product-image.repository';
+import { ProductVariantRepository } from './repository/product-variant.repository';
 
 @Module({
   imports: [
@@ -34,6 +35,7 @@ import { ProductImageRepository } from './repository/product-image.repository';
     ProductRepository,
     ProductCategoryRepository,
     ProductTagRepository,
+    ProductVariantRepository,
     ProductTagAssignmentRepository,
     ProductImageRepository,
   ],

@@ -12,6 +12,8 @@ import { ProductService } from './product.service';
 import { CreateProductDto } from './dto/product-dtos/create-product.dto';
 import { UpdateProductDto } from './dto/product-dtos/update-product.dto';
 import { ProductResponseDto } from './dto/product-dtos/product-response.dto';
+import { CreateVariantDto } from './dto/variant-dtos/create-variant.dto';
+import { UpdateVariantDto } from './dto/variant-dtos/update-variant.dto';
 
 @Controller('products')
 export class ProductController {
@@ -19,7 +21,8 @@ export class ProductController {
 
   // CREATE PRODUCT
   @Post()
-  create(@Body() createProductDto: CreateProductDto,
+  create(
+    @Body() createProductDto: CreateProductDto,
   ): Promise<ProductResponseDto> {
     return this.productService.create(createProductDto);
   }
@@ -143,5 +146,44 @@ export class ProductController {
     @Param('imageId') imageId: string,
   ) {
     return this.productService.deleteProductImage(productId, imageId);
+  }
+
+  // ----------------------------------------
+  @Post(':productId/variants')
+  createVariant(
+    @Param('productId') productId: string,
+    @Body() dto: CreateVariantDto,
+  ) {
+    return this.productService.createVariant(productId, dto);
+  }
+
+  @Get(':productId/variants')
+  getProductVariants(@Param('productId') productId: string) {
+    return this.productService.getProductVariants(productId);
+  }
+
+  @Get(':productId/variants/:variantId')
+  getVariantById(
+    @Param('productId') productId: string,
+    @Param('variantId') variantId: string,
+  ) {
+    return this.productService.getVariantById(productId, variantId);
+  }
+
+  @Patch(':productId/variants/:variantId')
+  updateVariant(
+    @Param('productId') productId: string,
+    @Param('variantId') variantId: string,
+    @Body() dto: UpdateVariantDto,
+  ) {
+    return this.productService.updateVariant(productId, variantId, dto);
+  }
+
+  @Delete(':productId/variants/:variantId')
+  deleteVariant(
+    @Param('productId') productId: string,
+    @Param('variantId') variantId: string,
+  ) {
+    return this.productService.deleteVariant(productId, variantId);
   }
 }

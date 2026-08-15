@@ -1,5 +1,4 @@
 import {
-  IsNotEmpty,
   IsNumber,
   IsOptional,
   IsString,
@@ -8,7 +7,7 @@ import {
   Min,
 } from 'class-validator';
 
-export class CreateVariantDto {
+export class UpdateVariantDto {
   @IsString()
   @Matches(/^[a-zA-Z0-9_-]+$/)
   @IsOptional()
@@ -20,8 +19,8 @@ export class CreateVariantDto {
 
   @IsNumber()
   @Min(0)
-  @IsNotEmpty()
-  price: number;
+  @IsOptional()
+  price?: number;
 
   @IsNumber()
   @Min(0)
@@ -44,8 +43,8 @@ export class CreateVariantDto {
   weight?: number;
 
   @IsString()
-  @IsNotEmpty()
-  option1: string;
+  @IsOptional()
+  option1?: string;
 
   @IsString()
   @IsOptional()

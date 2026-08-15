@@ -18,6 +18,10 @@ import { ProductTagRepository } from './repository/product-tag.repository';
 import { ProductTagAssignmentRepository } from './repository/product-tag-assignment.repository';
 import { ProductImageRepository } from './repository/product-image.repository';
 import { ProductImage } from './entity/product-image.entity';
+import { ProductVariantRepository } from './repository/product-variant.repository';
+import { CreateVariantDto } from './dto/variant-dtos/create-variant.dto';
+import { ProductVariant } from './entity/product-variant.entity';
+import { UpdateVariantDto } from './dto/variant-dtos/update-variant.dto';
 
 @Injectable()
 export class ProductService {
@@ -28,6 +32,7 @@ export class ProductService {
     private readonly productTagRepository: ProductTagRepository,
     private readonly productTagAssignmentRepository: ProductTagAssignmentRepository,
     private readonly productImageRepository: ProductImageRepository,
+    private readonly productVariantRepository: ProductVariantRepository,
   ) {}
 
   // -----------------------------------------
@@ -469,6 +474,7 @@ export class ProductService {
 
     return ProductMapper.toResponse(updatedProduct);
   }
+  // -----------------------------------------
 
   // -----------------------------------------
   // ADD PRODUCT IMAGE
@@ -577,6 +583,195 @@ export class ProductService {
     await this.productImageRepository.delete(imageId);
     return {
       message: 'Product image deleted successfully',
+    };
+  }
+  // -----------------------------------------
+
+  // -----------------------------------------
+  // CREATE PRODUCT VARIENT
+  async createVariant(
+    productId: string,
+    dto: CreateVariantDto,
+  ): Promise<ProductVariant> {
+    const product = await this.productRepository.findById(productId);
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    if (dto.compareAtPrice !== undefined && dto.compareAtPrice < dto.price) {
+      throw new BadRequestException(
+        'Compare price must be greater than or equal to price',
+      );
+    }
+
+    if (dto.sku) {
+      const existingVariant =
+        await this.productVariantRepository.findByStoreAndSku(
+          product.storeId,
+          dto.sku,
+        );
+
+      if (existingVariant) {
+        throw new ConflictException('Variant SKU already exists in this store');
+      }
+    }
+
+    if (dto.imageId) {
+      const image = await this.productImageRepository.findById(dto.imageId);
+
+      if (!image || image.productId !== productId) {
+        throw new BadRequestException('Image does not belong to this product');
+      }
+    }
+
+    const variants =
+      await this.productVariantRepository.findByProductId(productId);
+
+    const name = [dto.option1, dto.option2, dto.option3]
+      .filter(Boolean)
+      .join(' / ');
+
+    const variant = this.productVariantRepository.create({
+      storeId: product.storeId,
+      productId,
+      name,
+      sku: dto.sku,
+      barcode: dto.barcode,
+      price: dto.price,
+      compareAtPrice: dto.compareAtPrice,
+      costPrice: dto.costPrice,
+      quantity: dto.quantity ?? 0,
+      weight: dto.weight,
+      option1: dto.option1,
+      option2: dto.option2,
+      option3: dto.option3,
+      imageId: dto.imageId,
+      position: variants.length,
+    });
+
+    return this.productVariantRepository.save(variant);
+  }
+
+  // -----------------------------------------
+  // GET PRODUCT VARIENT
+  async getProductVariants(productId: string): Promise<ProductVariant[]> {
+    const product = await this.productRepository.findById(productId);
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    return this.productVariantRepository.findByProductId(productId);
+  }
+
+  // -----------------------------------------
+  // GET PRODUCT VARIENT BY ID
+  async getVariantById(
+    productId: string,
+    variantId: string,
+  ): Promise<ProductVariant> {
+    const product = await this.productRepository.findById(productId);
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    const variant = await this.productVariantRepository.findById(variantId);
+
+    if (!variant || variant.productId !== productId) {
+      throw new NotFoundException('Product variant not found');
+    }
+
+    return variant;
+  }
+
+  // -----------------------------------------
+  // UPDATE PRODUCT VARIENT
+  async updateVariant(
+    productId: string,
+    variantId: string,
+    dto: UpdateVariantDto,
+  ): Promise<ProductVariant> {
+    const variant = await this.getVariantById(productId, variantId);
+
+    if (
+      dto.compareAtPrice !== undefined &&
+      dto.price !== undefined &&
+      dto.compareAtPrice < dto.price
+    ) {
+      throw new BadRequestException(
+        'Compare price must be greater than or equal to price',
+      );
+    }
+
+    if (
+      dto.compareAtPrice !== undefined &&
+      dto.price === undefined &&
+      variant.compareAtPrice !== undefined &&
+      dto.compareAtPrice < variant.price
+    ) {
+      throw new BadRequestException(
+        'Compare price must be greater than or equal to price',
+      );
+    }
+
+    if (
+      dto.price !== undefined &&
+      dto.compareAtPrice === undefined &&
+      variant.compareAtPrice !== undefined &&
+      variant.compareAtPrice < dto.price
+    ) {
+      throw new BadRequestException(
+        'Compare price must be greater than or equal to price',
+      );
+    }
+
+    if (dto.sku && dto.sku !== variant.sku) {
+      const existingVariant =
+        await this.productVariantRepository.findByStoreAndSku(
+          variant.storeId,
+          dto.sku,
+        );
+
+      if (existingVariant && existingVariant.id !== variantId) {
+        throw new ConflictException('Variant SKU already exists in this store');
+      }
+    }
+
+    if (dto.imageId) {
+      const image = await this.productImageRepository.findById(dto.imageId);
+
+      if (!image || image.productId !== productId) {
+        throw new BadRequestException('Image does not belong to this product');
+      }
+    }
+
+    Object.assign(variant, dto);
+
+    const nextOption1 = dto.option1 ?? variant.option1;
+    const nextOption2 = dto.option2 ?? variant.option2;
+    const nextOption3 = dto.option3 ?? variant.option3;
+
+    variant.name = [nextOption1, nextOption2, nextOption3]
+      .filter(Boolean)
+      .join(' / ');
+
+    return this.productVariantRepository.save(variant);
+  }
+
+  // -----------------------------------------
+  // DELETE PRODUCT VARIENT
+  async deleteVariant(
+    productId: string,
+    variantId: string,
+  ): Promise<{ message: string }> {
+    await this.getVariantById(productId, variantId);
+
+    await this.productVariantRepository.delete(variantId);
+
+    return {
+      message: 'Product variant deleted successfully',
     };
   }
 }
