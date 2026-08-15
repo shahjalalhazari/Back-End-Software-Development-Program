@@ -1,8 +1,10 @@
+import { SubCategory } from 'src/product/entity/sub-category.entity';
 import {
   Column,
   CreateDateColumn,
   Entity,
   Index,
+  OneToMany,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
@@ -24,6 +26,9 @@ export class Category {
 
   @Column({ default: true })
   isActive: boolean;
+
+  @OneToMany(() => SubCategory, (subcategory) => subcategory.parent)
+  subCategories: SubCategory[];
 
   @CreateDateColumn()
   createdAt: Date;

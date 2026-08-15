@@ -1,3 +1,4 @@
+import { Product } from 'src/product/entity/product.entity';
 import { User } from 'src/user/entity/user.entity';
 import {
   Column,
@@ -5,6 +6,7 @@ import {
   Entity,
   Index,
   JoinColumn,
+  OneToMany,
   OneToOne,
   PrimaryGeneratedColumn,
   UpdateDateColumn,
@@ -44,6 +46,10 @@ export class Store {
 
   @Column({ nullable: true })
   logo: string;
+
+  @OneToMany(() => Product, (product) => product.store,
+  )
+  products: Product[];
 
   @Column({
     type: 'enum',
