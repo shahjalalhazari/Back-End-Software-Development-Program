@@ -88,37 +88,6 @@ export class ProductService {
     return store;
   }
 
-  // VALIDATE PRODUCT FOR PUBLISH
-  private validateProductForPublishing(product: Product): void {
-    if (!product.name?.trim()) {
-      throw new BadRequestException(
-        'Product name is required before publishing',
-      );
-    }
-
-    if (!product.description?.trim()) {
-      throw new BadRequestException(
-        'Product description is required before publishing',
-      );
-    }
-
-    if (
-      product.price === undefined ||
-      product.price === null ||
-      product.price < 0
-    ) {
-      throw new BadRequestException(
-        'Product price must be a valid non-negative number',
-      );
-    }
-
-    if (!product.slug?.trim()) {
-      throw new BadRequestException(
-        'Product slug is required before publishing',
-      );
-    }
-  }
-
   // GENERATE UNIQUE TAG SLUG
   private async generateUniqueTagSlug(
     storeId: string,
@@ -225,6 +194,158 @@ export class ProductService {
 
     await this.assignTags(productId, storeId, tags);
   }
+
+  // VALIDATE PRODUCT FOR PUBLISH
+  private validateBasicProductInformation(product: Product): void {
+    if (!product.name?.trim()) {
+      throw new BadRequestException(
+        'Product name is required before publishing',
+      );
+    }
+
+    if (!product.description?.trim()) {
+      throw new BadRequestException(
+        'Product description is required before publishing',
+      );
+    }
+
+    if (!product.slug?.trim()) {
+      throw new BadRequestException(
+        'Product slug is required before publishing',
+      );
+    }
+  }
+
+  // VALIDATE PRODUCT PRICING
+  private validateProductPricing(product: Product): void {
+    if (
+      product.price === undefined ||
+      product.price === null ||
+      product.price < 0
+    ) {
+      throw new BadRequestException(
+        'Product price must be a valid non-negative number',
+      );
+    }
+
+    if (
+      product.compareAtPrice !== undefined &&
+      product.compareAtPrice !== null &&
+      product.compareAtPrice < product.price
+    ) {
+      throw new BadRequestException(
+        'Compare-at price must be greater than or equal to price',
+      );
+    }
+
+    if (
+      product.costPrice !== undefined &&
+      product.costPrice !== null &&
+      product.costPrice < 0
+    ) {
+      throw new BadRequestException('Cost price cannot be negative');
+    }
+  }
+
+  // VALIDATE PRODUCT INVENTORY
+  private validateProductInventory(product: Product): void {
+    if (product.quantity < 0) {
+      throw new BadRequestException('Product quantity cannot be negative');
+    }
+
+    if (product.lowStockThreshold < 0) {
+      throw new BadRequestException('Low stock threshold cannot be negative');
+    }
+  }
+
+  // VALIDATE PRODUCT CATEGORIES
+  private async validateProductCategories(productId: string): Promise<void> {
+    const categories =
+      await this.productCategoryRepository.findByProductId(productId);
+
+    if (!categories.length) {
+      throw new BadRequestException(
+        'At least one category is required before publishing',
+      );
+    }
+  }
+
+  // VALIDATE PRODUCT IMAGES
+  private async validateProductImages(productId: string): Promise<void> {
+    const images = await this.productImageRepository.findByProductId(productId);
+
+    if (!images.length) {
+      throw new BadRequestException(
+        'At least one product image is required before publishing',
+      );
+    }
+
+    const hasPrimaryImage = images.some((image) => image.isPrimary);
+
+    if (!hasPrimaryImage) {
+      throw new BadRequestException(
+        'Product must have a primary image before publishing',
+      );
+    }
+  }
+
+  // VALIDATE PRODUCT VARIANTS
+  private async validateProductVariants(productId: string): Promise<void> {
+    const variants =
+      await this.productVariantRepository.findByProductId(productId);
+
+    if (!variants.length) {
+      return;
+    }
+
+    for (const variant of variants) {
+      if (!variant.name?.trim()) {
+        throw new BadRequestException('Every product variant must have a name');
+      }
+
+      if (
+        variant.price === undefined ||
+        variant.price === null ||
+        variant.price < 0
+      ) {
+        throw new BadRequestException(
+          `Variant "${variant.name}" must have a valid price`,
+        );
+      }
+
+      if (
+        variant.compareAtPrice !== undefined &&
+        variant.compareAtPrice !== null &&
+        variant.compareAtPrice < variant.price
+      ) {
+        throw new BadRequestException(
+          `Variant "${variant.name}" has an invalid compare-at price`,
+        );
+      }
+
+      if (variant.quantity < 0) {
+        throw new BadRequestException(
+          `Variant "${variant.name}" has invalid quantity`,
+        );
+      }
+    }
+  }
+
+  // VALIDATE PRODUCT FOR PUBLISHING
+  private async validateProductForPublishing(product: Product): Promise<void> {
+    this.validateBasicProductInformation(product);
+
+    this.validateProductPricing(product);
+
+    this.validateProductInventory(product);
+
+    await this.validateProductCategories(product.id);
+
+    await this.validateProductImages(product.id);
+
+    await this.validateProductVariants(product.id);
+  }
+
   // -----------------------------------------
 
   // -----------------------------------------
@@ -449,7 +570,7 @@ export class ProductService {
       );
     }
 
-    this.validateProductForPublishing(product);
+    await this.validateProductForPublishing(product);
     await this.validateActiveStore(product.storeId);
 
     product.status = ProductStatus.PUBLISHED;
