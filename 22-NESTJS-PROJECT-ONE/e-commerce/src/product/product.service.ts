@@ -45,7 +45,6 @@ export class ProductService {
       .replace(/(^-|-$)/g, '');
   }
 
-  // -----------------------------------------
   // GENERATE UNIQUE SLUG
   private async generateUniqueSlug(
     value: string,
@@ -72,7 +71,6 @@ export class ProductService {
     }
   }
 
-  // -----------------------------------------
   // VALIDATE STORE
   private async validateActiveStore(storeId: string) {
     const store = await this.storeService.findById(storeId);
@@ -90,7 +88,6 @@ export class ProductService {
     return store;
   }
 
-  // -----------------------------------------
   // VALIDATE PRODUCT FOR PUBLISH
   private validateProductForPublishing(product: Product): void {
     if (!product.name?.trim()) {
@@ -122,7 +119,6 @@ export class ProductService {
     }
   }
 
-  // -----------------------------------------
   // GENERATE UNIQUE TAG SLUG
   private async generateUniqueTagSlug(
     storeId: string,
@@ -141,7 +137,6 @@ export class ProductService {
     return slug;
   }
 
-  // -----------------------------------------
   // ASSIGN CATEGORIES
   private async assignCategories(
     productId: string,
@@ -159,7 +154,6 @@ export class ProductService {
     );
   }
 
-  // -----------------------------------------
   // ASSIGN TAGS
   private async assignTags(
     productId: string,
@@ -183,20 +177,13 @@ export class ProductService {
       if (!tag) {
         const slug = await this.generateUniqueTagSlug(storeId, tagName);
 
-        const createdTag = this.productTagRepository.create({
-          storeId,
-          name: tagName,
-          slug,
-        });
-
-        tag = await this.productTagRepository.save(createdTag);
+        tag = await this.productTagRepository.create(storeId, tagName, slug);
       }
 
       await this.productTagAssignmentRepository.create(productId, tag.id);
     }
   }
 
-  // -----------------------------------------
   // UPDATE CATEGORIES
   private async updateCategories(
     productId: string,
@@ -206,7 +193,7 @@ export class ProductService {
       return;
     }
 
-    await this.productCategoryRepository.deleteByProductId(productId);
+    await this.productCategoryRepository.removeAllByProductId(productId);
 
     if (categoryIds.length === 0) {
       return;
@@ -220,7 +207,6 @@ export class ProductService {
     );
   }
 
-  // -----------------------------------------
   // UPDATE TAGS
   private async updateTags(
     productId: string,
@@ -231,7 +217,7 @@ export class ProductService {
       return;
     }
 
-    await this.productTagAssignmentRepository.deleteByProductId(productId);
+    await this.productTagAssignmentRepository.removeAllByProductId(productId);
 
     if (tags.length === 0) {
       return;
@@ -239,6 +225,7 @@ export class ProductService {
 
     await this.assignTags(productId, storeId, tags);
   }
+  // -----------------------------------------
 
   // -----------------------------------------
   // CREATE
@@ -305,7 +292,6 @@ export class ProductService {
     return ProductMapper.toResponse(savedProduct);
   }
 
-  // -----------------------------------------
   // FIND ALL
   async findAll(): Promise<ProductResponseDto[]> {
     const products = await this.productRepository.findAll();
@@ -313,7 +299,6 @@ export class ProductService {
     return ProductMapper.toResponseList(products);
   }
 
-  // -----------------------------------------
   // FIND BY ID
   async findById(id: string): Promise<ProductResponseDto> {
     const product = await this.productRepository.findById(id);
@@ -325,7 +310,6 @@ export class ProductService {
     return ProductMapper.toResponse(product);
   }
 
-  // -----------------------------------------
   // FIND BY STORE + SKU
   async findByStoreAndSku(
     storeId: string,
@@ -343,7 +327,6 @@ export class ProductService {
     return ProductMapper.toResponse(product);
   }
 
-  // -----------------------------------------
   // FIND BY STORE + SLUG
   async findByStoreAndSlug(
     storeId: string,
@@ -361,7 +344,6 @@ export class ProductService {
     return ProductMapper.toResponse(product);
   }
 
-  // -----------------------------------------
   // FIND PRODUCTS BY STORE
   async findByStoreId(storeId: string): Promise<ProductResponseDto[]> {
     const products = await this.productRepository.findByStoreId(storeId);
@@ -369,7 +351,6 @@ export class ProductService {
     return ProductMapper.toResponseList(products);
   }
 
-  // -----------------------------------------
   // UPDATE
   async updateProduct(
     id: string,
@@ -413,7 +394,6 @@ export class ProductService {
     return ProductMapper.toResponse(updatedProduct);
   }
 
-  // -----------------------------------------
   // SOFT DELETE
   async removeProduct(id: string): Promise<{ message: string }> {
     const product = await this.productRepository.findById(id);
@@ -429,7 +409,6 @@ export class ProductService {
     };
   }
 
-  // -----------------------------------------
   // RESTORE
   async restoreProduct(id: string): Promise<ProductResponseDto> {
     const product = await this.productRepository.findByIdWithDeleted(id);
@@ -453,7 +432,6 @@ export class ProductService {
     return ProductMapper.toResponse(restoredProduct);
   }
 
-  // -----------------------------------------
   // PUBLISH
   async publishProduct(id: string): Promise<ProductResponseDto> {
     const product = await this.productRepository.findById(id);
@@ -462,14 +440,80 @@ export class ProductService {
       throw new NotFoundException('Product not found');
     }
 
-    this.validateProductForPublishing(product);
+    if (
+      product.status !== ProductStatus.DRAFT &&
+      product.status !== ProductStatus.HIDDEN
+    ) {
+      throw new BadRequestException(
+        'Only draft or hidden products can be published',
+      );
+    }
 
+    this.validateProductForPublishing(product);
     await this.validateActiveStore(product.storeId);
 
     product.status = ProductStatus.PUBLISHED;
-
     product.publishedAt = new Date();
+    const updatedProduct = await this.productRepository.save(product);
 
+    return ProductMapper.toResponse(updatedProduct);
+  }
+
+  // HIDE PRODUCT
+  async hideProduct(id: string): Promise<ProductResponseDto> {
+    const product = await this.productRepository.findById(id);
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    if (product.status !== ProductStatus.PUBLISHED) {
+      throw new BadRequestException('Only published products can be hidden');
+    }
+
+    product.status = ProductStatus.HIDDEN;
+    const updatedProduct = await this.productRepository.save(product);
+
+    return ProductMapper.toResponse(updatedProduct);
+  }
+
+  // UNHIDE PRODUCT
+  async unhideProduct(id: string): Promise<ProductResponseDto> {
+    const product = await this.productRepository.findById(id);
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    if (product.status !== ProductStatus.HIDDEN) {
+      throw new BadRequestException('Only hidden products can be unhidden');
+    }
+
+    await this.validateActiveStore(product.storeId);
+    product.status = ProductStatus.PUBLISHED;
+    const updatedProduct = await this.productRepository.save(product);
+
+    return ProductMapper.toResponse(updatedProduct);
+  }
+
+  // ARCHIVE PRODUCT
+  async archiveProduct(id: string): Promise<ProductResponseDto> {
+    const product = await this.productRepository.findById(id);
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    if (
+      product.status !== ProductStatus.PUBLISHED &&
+      product.status !== ProductStatus.HIDDEN
+    ) {
+      throw new BadRequestException(
+        'Only published or hidden products can be archived',
+      );
+    }
+
+    product.status = ProductStatus.ARCHIVED;
     const updatedProduct = await this.productRepository.save(product);
 
     return ProductMapper.toResponse(updatedProduct);
@@ -502,7 +546,6 @@ export class ProductService {
     return this.productImageRepository.save(image);
   }
 
-  // -----------------------------------------
   // GET PRODUCT IMAGES
   async getProductImages(productId: string): Promise<ProductImage[]> {
     const product = await this.productRepository.findById(productId);
@@ -514,7 +557,6 @@ export class ProductService {
     return this.productImageRepository.findByProductId(productId);
   }
 
-  // -----------------------------------------
   // SET PRIMARY PRODUCT IMAGE
   async setPrimaryProductImage(
     productId: string,
@@ -536,7 +578,6 @@ export class ProductService {
     return this.productImageRepository.save(image);
   }
 
-  // -----------------------------------------
   // REORDER PRODUCT IMAGE
   async reorderProductImage(
     productId: string,
@@ -564,7 +605,6 @@ export class ProductService {
     return this.productImageRepository.save(image);
   }
 
-  // -----------------------------------------
   // DELETE PRODUCT IMAGE
   async deleteProductImage(
     productId: string,
@@ -653,7 +693,6 @@ export class ProductService {
     return this.productVariantRepository.save(variant);
   }
 
-  // -----------------------------------------
   // GET PRODUCT VARIENT
   async getProductVariants(productId: string): Promise<ProductVariant[]> {
     const product = await this.productRepository.findById(productId);
@@ -665,7 +704,6 @@ export class ProductService {
     return this.productVariantRepository.findByProductId(productId);
   }
 
-  // -----------------------------------------
   // GET PRODUCT VARIENT BY ID
   async getVariantById(
     productId: string,
@@ -686,7 +724,6 @@ export class ProductService {
     return variant;
   }
 
-  // -----------------------------------------
   // UPDATE PRODUCT VARIENT
   async updateVariant(
     productId: string,
@@ -760,7 +797,6 @@ export class ProductService {
     return this.productVariantRepository.save(variant);
   }
 
-  // -----------------------------------------
   // DELETE PRODUCT VARIENT
   async deleteVariant(
     productId: string,
@@ -774,4 +810,5 @@ export class ProductService {
       message: 'Product variant deleted successfully',
     };
   }
+  // -----------------------------------------
 }

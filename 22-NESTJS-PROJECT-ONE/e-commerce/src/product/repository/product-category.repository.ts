@@ -1,7 +1,7 @@
 import { Injectable } from '@nestjs/common';
+import { InjectRepository } from '@nestjs/typeorm';
 import { ProductCategory } from '../entity/product-category.entity';
 import { Repository } from 'typeorm';
-import { InjectRepository } from '@nestjs/typeorm';
 
 @Injectable()
 export class ProductCategoryRepository {
@@ -10,6 +10,7 @@ export class ProductCategoryRepository {
     private readonly repository: Repository<ProductCategory>,
   ) {}
 
+  // ASSIGN CATEGORY TO A PRODUCT
   async create(
     productId: string,
     categoryId: string,
@@ -22,6 +23,7 @@ export class ProductCategoryRepository {
     return this.repository.save(productCategory);
   }
 
+  // ASSIGN MULTIPLE CATEGORIES TO A PRODUCT
   async createMany(
     productId: string,
     categoryIds: string[],
@@ -30,50 +32,66 @@ export class ProductCategoryRepository {
       return [];
     }
 
-    const records = categoryIds.map((categoryId) =>
+    const productCategories = categoryIds.map((categoryId) =>
       this.repository.create({
         productId,
         categoryId,
       }),
     );
 
-    return this.repository.save(records);
+    return this.repository.save(productCategories);
   }
 
+  // GET ALL CATEGORIES OF A PRODUCT
   async findByProductId(productId: string): Promise<ProductCategory[]> {
     return this.repository.find({
       where: { productId },
-      relations: {
-        category: true,
-      },
     });
   }
 
-  async findByProductAndCategory(
-    productId: string,
-    categoryId: string,
-  ): Promise<ProductCategory | null> {
-    return this.repository.findOne({
+  // GET ALL PRODUCT ASSIGNED TO A CATEGORY
+  async findByCategoryId(categoryId: string): Promise<ProductCategory[]> {
+    return this.repository.find({
+      where: { categoryId },
+    });
+  }
+
+  // CHECK IS PRODUCT ASSIGNED TO A CATEGORY
+  async exists(productId: string, categoryId: string): Promise<boolean> {
+    const count = await this.repository.count({
       where: {
         productId,
         categoryId,
       },
     });
+
+    return count > 0;
   }
 
-  async deleteByProductId(productId: string): Promise<void> {
-    await this.repository.delete({
-      productId,
-    });
-  }
-
-  async deleteByProductAndCategory(
-    productId: string,
-    categoryId: string,
-  ): Promise<void> {
+  // REMOVE A CATEGORY FROM A PRODUCT
+  async remove(productId: string, categoryId: string): Promise<void> {
     await this.repository.delete({
       productId,
       categoryId,
     });
+  }
+
+  // REMOVE ALL CATEGORIES FROM A PRODUCT
+  async removeAllByProductId(productId: string): Promise<void> {
+    await this.repository.delete({ productId });
+  }
+
+  // REPLACE ALL PRODUCT CATEGORIES
+  async replace(
+    productId: string,
+    categoryIds: string[],
+  ): Promise<ProductCategory[]> {
+    await this.removeAllByProductId(productId);
+
+    if (!categoryIds.length) {
+      return [];
+    }
+
+    return this.createMany(productId, categoryIds);
   }
 }

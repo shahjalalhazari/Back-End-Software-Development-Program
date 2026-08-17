@@ -92,6 +92,24 @@ export class ProductController {
     return this.productService.removeProduct(id);
   }
 
+  // HIDE PRODUCT
+  @Post(':id/hide')
+  hide(@Param('id') id: string): Promise<ProductResponseDto> {
+    return this.productService.hideProduct(id);
+  }
+
+  // UNHIDE PRODUCT
+  @Post(':id/unhide')
+  unhide(@Param('id') id: string): Promise<ProductResponseDto> {
+    return this.productService.unhideProduct(id);
+  }
+
+  // ARCHIVE PRODUCT
+  @Post(':id/archive')
+  archive(@Param('id') id: string): Promise<ProductResponseDto> {
+    return this.productService.archiveProduct(id);
+  }
+
   // ------------------------------------
   // ADD PRODUCT IMAGE
   @Post(':productId/images')
