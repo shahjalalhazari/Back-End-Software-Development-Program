@@ -103,20 +103,29 @@ export class ProductController {
 
   // HIDE PRODUCT
   @Post(':id/hide')
-  hide(@Param('id') id: string): Promise<ProductResponseDto> {
-    return this.productService.hideProduct(id);
+  hide(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ProductResponseDto> {
+    return this.productService.hideProduct(id, req.user);
   }
 
   // UNHIDE PRODUCT
   @Post(':id/unhide')
-  unhide(@Param('id') id: string): Promise<ProductResponseDto> {
-    return this.productService.unhideProduct(id);
+  unhide(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ProductResponseDto> {
+    return this.productService.unhideProduct(id, req.user);
   }
 
   // ARCHIVE PRODUCT
   @Post(':id/archive')
-  archive(@Param('id') id: string): Promise<ProductResponseDto> {
-    return this.productService.archiveProduct(id);
+  archive(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ProductResponseDto> {
+    return this.productService.archiveProduct(id, req.user);
   }
 
   // ------------------------------------

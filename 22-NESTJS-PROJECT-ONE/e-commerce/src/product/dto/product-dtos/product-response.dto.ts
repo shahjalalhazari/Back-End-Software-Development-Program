@@ -38,7 +38,7 @@ export class ProductResponseDto {
   metaTitle?: string;
   metaDescription?: string;
 
-  publishedAt?: Date;
+  publishedAt: Date | null;
 
   createdAt: Date;
   updatedAt: Date;

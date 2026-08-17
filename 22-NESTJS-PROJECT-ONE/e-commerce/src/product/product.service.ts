@@ -597,7 +597,6 @@ export class ProductService {
     user: AuthenticatedUser,
   ): Promise<ProductResponseDto> {
     const product = await this.productRepository.findById(id);
-
     if (!product) {
       throw new NotFoundException('Product not found');
     }
@@ -618,18 +617,23 @@ export class ProductService {
 
     product.status = ProductStatus.PUBLISHED;
     product.publishedAt = new Date();
+
     const updatedProduct = await this.productRepository.save(product);
 
     return ProductMapper.toResponse(updatedProduct);
   }
 
   // HIDE PRODUCT
-  async hideProduct(id: string): Promise<ProductResponseDto> {
+  async hideProduct(
+    id: string,
+    user: AuthenticatedUser,
+  ): Promise<ProductResponseDto> {
     const product = await this.productRepository.findById(id);
-
     if (!product) {
       throw new NotFoundException('Product not found');
     }
+
+    await this.validateProductOwnership(product, user);
 
     if (product.status !== ProductStatus.PUBLISHED) {
       throw new BadRequestException('Only published products can be hidden');
@@ -642,18 +646,21 @@ export class ProductService {
   }
 
   // UNHIDE PRODUCT
-  async unhideProduct(id: string): Promise<ProductResponseDto> {
+  async unhideProduct(
+    id: string,
+    user: AuthenticatedUser,
+  ): Promise<ProductResponseDto> {
     const product = await this.productRepository.findById(id);
-
     if (!product) {
       throw new NotFoundException('Product not found');
     }
+
+    await this.validateProductOwnership(product, user);
 
     if (product.status !== ProductStatus.HIDDEN) {
       throw new BadRequestException('Only hidden products can be unhidden');
     }
 
-    await this.validateActiveStore(product.storeId);
     product.status = ProductStatus.PUBLISHED;
     const updatedProduct = await this.productRepository.save(product);
 
@@ -661,12 +668,16 @@ export class ProductService {
   }
 
   // ARCHIVE PRODUCT
-  async archiveProduct(id: string): Promise<ProductResponseDto> {
+  async archiveProduct(
+    id: string,
+    user: AuthenticatedUser,
+  ): Promise<ProductResponseDto> {
     const product = await this.productRepository.findById(id);
-
     if (!product) {
       throw new NotFoundException('Product not found');
     }
+
+    await this.validateProductOwnership(product, user);
 
     if (
       product.status !== ProductStatus.PUBLISHED &&
@@ -678,6 +689,31 @@ export class ProductService {
     }
 
     product.status = ProductStatus.ARCHIVED;
+    const updatedProduct = await this.productRepository.save(product);
+
+    return ProductMapper.toResponse(updatedProduct);
+  }
+
+  // RESTORE ARCHIVED PRODUCT
+  async restoreArchivedProduct(
+    id: string,
+    user: AuthenticatedUser,
+  ): Promise<ProductResponseDto> {
+    const product = await this.productRepository.findById(id);
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    await this.validateProductOwnership(product, user);
+
+    if (product.status !== ProductStatus.ARCHIVED) {
+      throw new BadRequestException('Only archived products can be restored');
+    }
+
+    product.status = ProductStatus.DRAFT;
+    product.publishedAt = null;
+
     const updatedProduct = await this.productRepository.save(product);
 
     return ProductMapper.toResponse(updatedProduct);

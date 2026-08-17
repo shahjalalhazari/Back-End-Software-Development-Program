@@ -197,11 +197,8 @@ export class Product {
   })
   options: ProductOption[];
 
-  @Column({
-    type: 'timestamp',
-    nullable: true,
-  })
-  publishedAt?: Date;
+  @Column({ type: 'timestamp', nullable: true })
+  publishedAt: Date | null;
 
   @CreateDateColumn()
   @Index()
