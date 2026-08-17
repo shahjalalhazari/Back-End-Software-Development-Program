@@ -24,7 +24,12 @@ import { ProductVariant } from './entity/product-variant.entity';
 import { UpdateVariantDto } from './dto/variant-dtos/update-variant.dto';
 import { AuthenticatedUser } from 'src/common/interfaces/authenticated-user.interface';
 import { UserRole } from 'src/user/entity/user.entity';
+import { ProductQueryDto } from './dto/product-query-dto/product-query.dto';
 
+export interface ProductListResult {
+  products: Product[];
+  total: number;
+}
 @Injectable()
 export class ProductService {
   constructor(
@@ -446,10 +451,22 @@ export class ProductService {
   }
 
   // FIND ALL
-  async findAll(): Promise<ProductResponseDto[]> {
-    const products = await this.productRepository.findAll();
+  async findAll(query: ProductQueryDto) {
+    const { products, total } = await this.productRepository.findWithFilters(query);
 
-    return ProductMapper.toResponseList(products);
+    const page = query.page ?? 1;
+    const limit = query.limit ?? 20;
+
+    return {
+      data: ProductMapper.toResponseList(products),
+
+      meta: {
+        total,
+        page,
+        limit,
+        totalPages: Math.ceil(total / limit),
+      },
+    };
   }
 
   // FIND BY ID

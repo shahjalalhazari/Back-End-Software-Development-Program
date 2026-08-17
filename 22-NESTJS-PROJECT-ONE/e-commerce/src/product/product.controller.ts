@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Query,
   Req,
 } from '@nestjs/common';
 
@@ -16,6 +17,7 @@ import { ProductResponseDto } from './dto/product-dtos/product-response.dto';
 import { CreateVariantDto } from './dto/variant-dtos/create-variant.dto';
 import { UpdateVariantDto } from './dto/variant-dtos/update-variant.dto';
 import type { AuthenticatedRequest } from 'src/common/interfaces/authenticated-user.interface';
+import { ProductQueryDto } from './dto/product-query-dto/product-query.dto';
 
 @Controller('products')
 export class ProductController {
@@ -31,8 +33,8 @@ export class ProductController {
 
   // GET ALL PRODUCTS
   @Get()
-  findAll(): Promise<ProductResponseDto[]> {
-    return this.productService.findAll();
+  findAll(@Query() query: ProductQueryDto) {
+    return this.productService.findAll(query);
   }
 
   // GET PRODUCTS BY STORE
