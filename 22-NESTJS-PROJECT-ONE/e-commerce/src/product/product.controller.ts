@@ -6,6 +6,7 @@ import {
   Param,
   Patch,
   Post,
+  Req,
 } from '@nestjs/common';
 
 import { ProductService } from './product.service';
@@ -14,6 +15,7 @@ import { UpdateProductDto } from './dto/product-dtos/update-product.dto';
 import { ProductResponseDto } from './dto/product-dtos/product-response.dto';
 import { CreateVariantDto } from './dto/variant-dtos/create-variant.dto';
 import { UpdateVariantDto } from './dto/variant-dtos/update-variant.dto';
+import type { AuthenticatedRequest } from 'src/common/interfaces/authenticated-user.interface';
 
 @Controller('products')
 export class ProductController {
@@ -70,14 +72,18 @@ export class ProductController {
   update(
     @Param('id') id: string,
     @Body() updateProductDto: UpdateProductDto,
+    @Req() req: AuthenticatedRequest,
   ): Promise<ProductResponseDto> {
-    return this.productService.updateProduct(id, updateProductDto);
+    return this.productService.updateProduct(id, updateProductDto, req.user);
   }
 
   // PUBLISH PRODUCT
   @Post(':id/publish')
-  publish(@Param('id') id: string): Promise<ProductResponseDto> {
-    return this.productService.publishProduct(id);
+  publish(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ProductResponseDto> {
+    return this.productService.publishProduct(id, req.user);
   }
 
   // RESTORE PRODUCT
@@ -88,8 +94,11 @@ export class ProductController {
 
   // SOFT DELETE PRODUCT
   @Delete(':id')
-  remove(@Param('id') id: string): Promise<{ message: string }> {
-    return this.productService.removeProduct(id);
+  remove(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<{ message: string }> {
+    return this.productService.removeProduct(id, req.user);
   }
 
   // HIDE PRODUCT
@@ -120,11 +129,13 @@ export class ProductController {
       url: string;
       altText?: string;
     },
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.productService.addProductImage(
       productId,
       body.url,
       body.altText,
+      req.user,
     );
   }
 
@@ -139,8 +150,13 @@ export class ProductController {
   setPrimaryProductImage(
     @Param('productId') productId: string,
     @Param('imageId') imageId: string,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.productService.setPrimaryProductImage(productId, imageId);
+    return this.productService.setPrimaryProductImage(
+      productId,
+      imageId,
+      req.user,
+    );
   }
 
   // REORDER PRODUCT IMAGES
@@ -149,11 +165,13 @@ export class ProductController {
     @Param('productId') productId: string,
     @Param('imageId') imageId: string,
     @Body('position') position: number,
+    @Req() req: AuthenticatedRequest,
   ) {
     return this.productService.reorderProductImage(
       productId,
       imageId,
       position,
+      req.user,
     );
   }
 
@@ -162,8 +180,9 @@ export class ProductController {
   deleteProductImage(
     @Param('productId') productId: string,
     @Param('imageId') imageId: string,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.productService.deleteProductImage(productId, imageId);
+    return this.productService.deleteProductImage(productId, imageId, req.user);
   }
 
   // ----------------------------------------
@@ -171,8 +190,9 @@ export class ProductController {
   createVariant(
     @Param('productId') productId: string,
     @Body() dto: CreateVariantDto,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.productService.createVariant(productId, dto);
+    return this.productService.createVariant(productId, dto, req.user);
   }
 
   @Get(':productId/variants')
@@ -193,15 +213,22 @@ export class ProductController {
     @Param('productId') productId: string,
     @Param('variantId') variantId: string,
     @Body() dto: UpdateVariantDto,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.productService.updateVariant(productId, variantId, dto);
+    return this.productService.updateVariant(
+      productId,
+      variantId,
+      dto,
+      req.user,
+    );
   }
 
   @Delete(':productId/variants/:variantId')
   deleteVariant(
     @Param('productId') productId: string,
     @Param('variantId') variantId: string,
+    @Req() req: AuthenticatedRequest,
   ) {
-    return this.productService.deleteVariant(productId, variantId);
+    return this.productService.deleteVariant(productId, variantId, req.user);
   }
 }

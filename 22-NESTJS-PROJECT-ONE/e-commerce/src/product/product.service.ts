@@ -22,6 +22,8 @@ import { ProductVariantRepository } from './repository/product-variant.repositor
 import { CreateVariantDto } from './dto/variant-dtos/create-variant.dto';
 import { ProductVariant } from './entity/product-variant.entity';
 import { UpdateVariantDto } from './dto/variant-dtos/update-variant.dto';
+import { AuthenticatedUser } from 'src/common/interfaces/authenticated-user.interface';
+import { UserRole } from 'src/user/entity/user.entity';
 
 @Injectable()
 export class ProductService {
@@ -346,6 +348,36 @@ export class ProductService {
     await this.validateProductVariants(product.id);
   }
 
+  // VALIDATE PRODUCT OWNERSHIP
+  private async validateProductOwnership(
+    product: Product,
+    user: AuthenticatedUser,
+  ): Promise<void> {
+    // SYSTEM ADMIN CAN MANAGE ALL PRODUCTS.
+    if (user.role === UserRole.SYSTEM_ADMIN) {
+      return;
+    }
+
+    // CUSTOMERS CAN'T MANAGE PRODUCTS.
+    if (user.role !== UserRole.VENDOR) {
+      throw new ForbiddenException('You are not allowed to manage products');
+    }
+
+    // FIND THE STORE THAT OWNS THIS PRODUCT.
+    const store = await this.storeService.findById(product.storeId);
+
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+
+    // CHECK THE AUTHENTICATED VENDOR OWNS THE STORE.
+    if (store.userId !== user.id) {
+      throw new ForbiddenException(
+        'You are not allowed to manage this product',
+      );
+    }
+  }
+
   // -----------------------------------------
 
   // -----------------------------------------
@@ -476,12 +508,16 @@ export class ProductService {
   async updateProduct(
     id: string,
     updateProductDto: UpdateProductDto,
+    user: AuthenticatedUser,
   ): Promise<ProductResponseDto> {
     const product = await this.productRepository.findById(id);
 
     if (!product) {
       throw new NotFoundException('Product not found');
     }
+
+    // VALIDATE PRODUCT OWNERSHIP
+    await this.validateProductOwnership(product, user);
 
     // Generate a new slug when name changes.
     if (updateProductDto.name && updateProductDto.name !== product.name) {
@@ -516,18 +552,20 @@ export class ProductService {
   }
 
   // SOFT DELETE
-  async removeProduct(id: string): Promise<{ message: string }> {
+  async removeProduct(
+    id: string,
+    user: AuthenticatedUser,
+  ): Promise<{ message: string }> {
     const product = await this.productRepository.findById(id);
 
     if (!product) {
       throw new NotFoundException('Product not found');
     }
 
+    await this.validateProductOwnership(product, user);
     await this.productRepository.softDelete(id);
 
-    return {
-      message: 'Product deleted successfully',
-    };
+    return { message: 'Product deleted successfully' };
   }
 
   // RESTORE
@@ -554,12 +592,17 @@ export class ProductService {
   }
 
   // PUBLISH
-  async publishProduct(id: string): Promise<ProductResponseDto> {
+  async publishProduct(
+    id: string,
+    user: AuthenticatedUser,
+  ): Promise<ProductResponseDto> {
     const product = await this.productRepository.findById(id);
 
     if (!product) {
       throw new NotFoundException('Product not found');
     }
+
+    await this.validateProductOwnership(product, user);
 
     if (
       product.status !== ProductStatus.DRAFT &&
@@ -646,13 +689,16 @@ export class ProductService {
   async addProductImage(
     productId: string,
     url: string,
-    altText?: string,
+    altText: string | undefined,
+    user: AuthenticatedUser,
   ): Promise<ProductImage> {
     const product = await this.productRepository.findById(productId);
 
     if (!product) {
       throw new NotFoundException('Product not found');
     }
+
+    await this.validateProductOwnership(product, user);
 
     const images = await this.productImageRepository.findByProductId(productId);
 
@@ -682,11 +728,14 @@ export class ProductService {
   async setPrimaryProductImage(
     productId: string,
     imageId: string,
+    user: AuthenticatedUser,
   ): Promise<ProductImage> {
     const product = await this.productRepository.findById(productId);
     if (!product) {
       throw new NotFoundException('Product not found');
     }
+
+    await this.validateProductOwnership(product, user);
 
     const image = await this.productImageRepository.findById(imageId);
     if (!image || image.productId !== productId) {
@@ -704,12 +753,14 @@ export class ProductService {
     productId: string,
     imageId: string,
     position: number,
+    user: AuthenticatedUser,
   ): Promise<ProductImage> {
     const product = await this.productRepository.findById(productId);
-
     if (!product) {
       throw new NotFoundException('Product not found');
     }
+
+    await this.validateProductOwnership(product, user);
 
     if (position < 0) {
       throw new BadRequestException('Position cannot be negative');
@@ -730,11 +781,14 @@ export class ProductService {
   async deleteProductImage(
     productId: string,
     imageId: string,
+    user: AuthenticatedUser,
   ): Promise<{ message: string }> {
     const product = await this.productRepository.findById(productId);
     if (!product) {
       throw new NotFoundException('Product not found');
     }
+
+    await this.validateProductOwnership(product, user);
 
     const image = await this.productImageRepository.findById(imageId);
     if (!image || image.productId !== productId) {
@@ -753,12 +807,14 @@ export class ProductService {
   async createVariant(
     productId: string,
     dto: CreateVariantDto,
+    user: AuthenticatedUser,
   ): Promise<ProductVariant> {
     const product = await this.productRepository.findById(productId);
-
     if (!product) {
       throw new NotFoundException('Product not found');
     }
+
+    await this.validateProductOwnership(product, user);
 
     if (dto.compareAtPrice !== undefined && dto.compareAtPrice < dto.price) {
       throw new BadRequestException(
@@ -850,8 +906,20 @@ export class ProductService {
     productId: string,
     variantId: string,
     dto: UpdateVariantDto,
+    user: AuthenticatedUser,
   ): Promise<ProductVariant> {
-    const variant = await this.getVariantById(productId, variantId);
+    const product = await this.productRepository.findById(productId);
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    await this.validateProductOwnership(product, user);
+
+    const variant = await this.productVariantRepository.findById(variantId);
+
+    if (!variant || variant.productId !== productId) {
+      throw new NotFoundException('Product variant not found');
+    }
 
     if (
       dto.compareAtPrice !== undefined &&
@@ -922,8 +990,20 @@ export class ProductService {
   async deleteVariant(
     productId: string,
     variantId: string,
+    user: AuthenticatedUser,
   ): Promise<{ message: string }> {
-    await this.getVariantById(productId, variantId);
+    const product = await this.productRepository.findById(productId);
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    await this.validateProductOwnership(product, user);
+
+    const variant = await this.productVariantRepository.findById(variantId);
+
+    if (!variant || variant.productId !== productId) {
+      throw new NotFoundException('Product variant not found');
+    }
 
     await this.productVariantRepository.delete(variantId);
 
