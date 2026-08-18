@@ -89,6 +89,7 @@ export class ProductRepository {
   async findWithFilters(query: ProductQueryDto): Promise<ProductListResult> {
     const {
       search,
+      categoryId,
       minPrice,
       maxPrice,
       page = 1,
@@ -103,6 +104,17 @@ export class ProductRepository {
         status: ProductStatus.PUBLISHED,
       });
 
+    // CATEGORY FILTER
+    if (categoryId) {
+      queryBuilder
+        .innerJoin(
+          'product_categories',
+          'productCategory',
+          'productCategory.productId = product.id',
+        )
+        .andWhere('productCategory.categoryId = :categoryId', { categoryId });
+    }
+
     // SEARCH
     if (search) {
       queryBuilder.andWhere(
@@ -111,9 +123,7 @@ export class ProductRepository {
           OR product.description ILIKE :search
           OR product.sku ILIKE :search
         )`,
-        {
-          search: `%${search}%`,
-        },
+        { search: `%${search}%` },
       );
     }
 
@@ -133,7 +143,6 @@ export class ProductRepository {
 
     // PAGINATION
     const skip = (page - 1) * limit;
-
     queryBuilder.orderBy(`product.${sortBy}`, sortOrder).skip(skip).take(limit);
 
     // EXECUTE QUERY

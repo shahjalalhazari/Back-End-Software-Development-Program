@@ -17,6 +17,7 @@ import { ProductImage } from './product-image.entity';
 import { ProductVariant } from './product-variant.entity';
 import { ProductOption } from './product-option.entity';
 import { DecimalTransformer } from 'src/utils/decimal.transformer';
+import { ProductCategory } from './product-category.entity';
 
 export enum ProductStatus {
   DRAFT = 'DRAFT',
@@ -196,6 +197,12 @@ export class Product {
     cascade: true,
   })
   options: ProductOption[];
+
+  @OneToMany(
+    () => ProductCategory,
+    (productCategory) => productCategory.product,
+  )
+  productCategories: ProductCategory[];
 
   @Column({ type: 'timestamp', nullable: true })
   publishedAt: Date | null;

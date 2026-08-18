@@ -27,6 +27,11 @@ export class ProductQueryDto {
   @IsString()
   search?: string;
 
+  // CATEGORY
+  @IsOptional()
+  @IsString()
+  categoryId?: string;
+
   // PAGINATION
   @IsOptional()
   @Type(() => Number)
