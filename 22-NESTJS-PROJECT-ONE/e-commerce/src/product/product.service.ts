@@ -26,6 +26,8 @@ import { AuthenticatedUser } from 'src/common/interfaces/authenticated-user.inte
 import { UserRole } from 'src/user/entity/user.entity';
 import { ProductQueryDto } from './dto/product-query-dto/product-query.dto';
 import { PublicProductResponseDto } from './dto/product-dtos/public-product-response.dto';
+import { InventoryResponseDto } from './dto/inventory-dtos/inventory-response.dto';
+import { UpdateInventoryDto } from './dto/inventory-dtos/update-inventory.dto';
 
 export interface ProductListResult {
   products: Product[];
@@ -1068,9 +1070,10 @@ export class ProductService {
   }
   // -----------------------------------------
 
+  // -----------------------------------------
+  // FIND PRODUCT FOR CUSTOMERS
   async findPublishedBySlug(slug: string): Promise<PublicProductResponseDto> {
     const product = await this.productRepository.findPublishedBySlug(slug);
-
     if (!product) {
       throw new NotFoundException('Product not found');
     }
@@ -1133,6 +1136,89 @@ export class ProductService {
         })),
 
       publishedAt: product.publishedAt,
+    };
+  }
+  // -----------------------------------------
+
+  // -----------------------------------------
+  // GET PRODUCT INVENTORY
+  async getProductInventory(
+    productId: string,
+    user: AuthenticatedUser,
+  ): Promise<InventoryResponseDto> {
+    const product = await this.productRepository.findById(productId);
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    await this.validateProductOwnership(product, user);
+
+    const inStock =
+      !product.trackInventory ||
+      product.quantity > 0 ||
+      product.allowBackorders;
+
+    const lowStock =
+      product.trackInventory &&
+      product.quantity > 0 &&
+      product.quantity <= product.lowStockThreshold;
+
+    return {
+      productId: product.id,
+      quantity: product.quantity,
+      trackInventory: product.trackInventory,
+      allowBackorders: product.allowBackorders,
+      lowStockThreshold: product.lowStockThreshold,
+      inStock,
+      lowStock,
+    };
+  }
+
+  // UPDATE PRODUCT INVENTORY
+  async updateProductInventory(
+    productId: string,
+    dto: UpdateInventoryDto,
+    user: AuthenticatedUser,
+  ): Promise<InventoryResponseDto> {
+    const product = await this.productRepository.findById(productId);
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    await this.validateProductOwnership(product, user);
+
+    if (dto.quantity !== undefined) {
+      product.quantity = dto.quantity;
+    }
+
+    if (dto.trackInventory !== undefined) {
+      product.trackInventory = dto.trackInventory;
+    }
+
+    if (dto.allowBackorders !== undefined) {
+      product.allowBackorders = dto.allowBackorders;
+    }
+
+    const updatedProduct = await this.productRepository.save(product);
+
+    const inStock =
+      !updatedProduct.trackInventory ||
+      updatedProduct.quantity > 0 ||
+      updatedProduct.allowBackorders;
+
+    const lowStock =
+      updatedProduct.trackInventory &&
+      updatedProduct.quantity > 0 &&
+      updatedProduct.quantity <= updatedProduct.lowStockThreshold;
+
+    return {
+      productId: updatedProduct.id,
+      quantity: updatedProduct.quantity,
+      trackInventory: updatedProduct.trackInventory,
+      allowBackorders: updatedProduct.allowBackorders,
+      lowStockThreshold: updatedProduct.lowStockThreshold,
+      inStock,
+      lowStock,
     };
   }
 }

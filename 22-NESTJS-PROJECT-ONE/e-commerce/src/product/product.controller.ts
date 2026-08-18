@@ -18,6 +18,7 @@ import { CreateVariantDto } from './dto/variant-dtos/create-variant.dto';
 import { UpdateVariantDto } from './dto/variant-dtos/update-variant.dto';
 import type { AuthenticatedRequest } from 'src/common/interfaces/authenticated-user.interface';
 import { ProductQueryDto } from './dto/product-query-dto/product-query.dto';
+import { UpdateInventoryDto } from './dto/inventory-dtos/update-inventory.dto';
 
 @Controller('products')
 export class ProductController {
@@ -247,5 +248,24 @@ export class ProductController {
     @Req() req: AuthenticatedRequest,
   ) {
     return this.productService.deleteVariant(productId, variantId, req.user);
+  }
+
+  // -----------------------------------------
+  // PRODUCT INVENTORY
+  @Get(':id/inventory')
+  getProductInventory(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.productService.getProductInventory(id, req.user);
+  }
+
+  @Patch(':id/inventory')
+  updateProductInventory(
+    @Param('id') id: string,
+    @Body() dto: UpdateInventoryDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.productService.updateProductInventory(id, dto, req.user);
   }
 }
