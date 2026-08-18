@@ -25,6 +25,7 @@ import { UpdateVariantDto } from './dto/variant-dtos/update-variant.dto';
 import { AuthenticatedUser } from 'src/common/interfaces/authenticated-user.interface';
 import { UserRole } from 'src/user/entity/user.entity';
 import { ProductQueryDto } from './dto/product-query-dto/product-query.dto';
+import { PublicProductResponseDto } from './dto/product-dtos/public-product-response.dto';
 
 export interface ProductListResult {
   products: Product[];
@@ -452,7 +453,8 @@ export class ProductService {
 
   // FIND ALL
   async findAll(query: ProductQueryDto) {
-    const { products, total } = await this.productRepository.findWithFilters(query);
+    const { products, total } =
+      await this.productRepository.findWithFilters(query);
 
     const page = query.page ?? 1;
     const limit = query.limit ?? 20;
@@ -1065,4 +1067,72 @@ export class ProductService {
     };
   }
   // -----------------------------------------
+
+  async findPublishedBySlug(slug: string): Promise<PublicProductResponseDto> {
+    const product = await this.productRepository.findPublishedBySlug(slug);
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    return {
+      id: product.id,
+
+      name: product.name,
+      slug: product.slug,
+
+      description: product.description,
+      shortDescription: product.shortDescription,
+
+      price: Number(product.price),
+      compareAtPrice:
+        product.compareAtPrice !== null && product.compareAtPrice !== undefined
+          ? Number(product.compareAtPrice)
+          : undefined,
+
+      status: product.status,
+
+      trackInventory: product.trackInventory,
+      quantity: product.quantity,
+
+      isDigital: product.isDigital,
+
+      images: (product.images ?? []).map((image) => ({
+        id: image.id,
+        url: image.url,
+        altText: image.altText,
+        position: image.position,
+        isPrimary: image.isPrimary,
+      })),
+
+      variants: (product.variants ?? []).map((variant) => ({
+        id: variant.id,
+        name: variant.name,
+        sku: variant.sku,
+        price: Number(variant.price),
+        compareAtPrice:
+          variant.compareAtPrice !== null &&
+          variant.compareAtPrice !== undefined
+            ? Number(variant.compareAtPrice)
+            : undefined,
+        quantity: variant.quantity,
+
+        option1: variant.option1,
+        option2: variant.option2,
+        option3: variant.option3,
+
+        imageId: variant.imageId,
+      })),
+
+      categories: (product.productCategories ?? [])
+        .filter((item) => item.category)
+        .map((item) => ({
+          id: item.category.id,
+          name: item.category.name,
+          slug: item.category.slug,
+        })),
+
+      publishedAt: product.publishedAt,
+    };
+  }
 }

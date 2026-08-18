@@ -183,4 +183,31 @@ export class ProductRepository {
       total,
     };
   }
+
+  // FIND ONLY PUBLISHED PRODUCT BY SLUG FOR CUSTOMERS
+  async findPublishedBySlug(slug: string): Promise<Product | null> {
+    return (
+      this.productRepository
+        .createQueryBuilder('product')
+        // IMAGES
+        .leftJoinAndSelect('product.images', 'image')
+        // VARIANTS
+        .leftJoinAndSelect('product.variants', 'variant')
+        // CATEGORIES
+        .leftJoinAndSelect('product.productCategories', 'productCategory')
+        // ACTUAL CATEGORY
+        .leftJoinAndSelect('productCategory.category', 'category')
+        .where('product.slug = :slug', {
+          slug,
+        })
+
+        // ONLY PUBLISHED PRODUCTS
+        .andWhere('product.status = :status', {
+          status: ProductStatus.PUBLISHED,
+        })
+        .orderBy('image.position', 'ASC')
+        .addOrderBy('variant.position', 'ASC')
+        .getOne()
+    );
+  }
 }

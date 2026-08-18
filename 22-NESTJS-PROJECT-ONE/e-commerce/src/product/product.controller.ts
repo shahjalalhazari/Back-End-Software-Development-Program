@@ -63,6 +63,12 @@ export class ProductController {
     return this.productService.findByStoreAndSlug(storeId, slug);
   }
 
+  // GET PUBLIC PRODUCT BY SLUG
+  @Get('slug/:slug')
+  findPublishedBySlug(@Param('slug') slug: string) {
+    return this.productService.findPublishedBySlug(slug);
+  }
+
   // GET PRODUCT BY ID
   @Get(':id')
   findById(@Param('id') id: string): Promise<ProductResponseDto> {
