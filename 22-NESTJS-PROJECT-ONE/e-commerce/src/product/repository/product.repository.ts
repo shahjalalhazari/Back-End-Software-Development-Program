@@ -89,7 +89,9 @@ export class ProductRepository {
   async findWithFilters(query: ProductQueryDto): Promise<ProductListResult> {
     const {
       search,
+      storeId,
       categoryId,
+      inStock,
       minPrice,
       maxPrice,
       page = 1,
@@ -104,6 +106,13 @@ export class ProductRepository {
         status: ProductStatus.PUBLISHED,
       });
 
+    // STORE FILTER
+    if (storeId) {
+      queryBuilder.andWhere('product.storeId = :storeId', {
+        storeId,
+      });
+    }
+
     // CATEGORY FILTER
     if (categoryId) {
       queryBuilder
@@ -113,6 +122,27 @@ export class ProductRepository {
           'productCategory.productId = product.id',
         )
         .andWhere('productCategory.categoryId = :categoryId', { categoryId });
+    }
+
+    // STOCK / AVAILABILITY FILTER
+    if (inStock !== undefined) {
+      if (inStock) {
+        queryBuilder.andWhere(
+          `(
+        product.trackInventory = false
+        OR product.quantity > 0
+        OR product.allowBackorders = true
+      )`,
+        );
+      } else {
+        queryBuilder.andWhere(
+          `(
+        product.trackInventory = true
+        AND product.quantity <= 0
+        AND product.allowBackorders = false
+      )`,
+        );
+      }
     }
 
     // SEARCH

@@ -1,4 +1,5 @@
 import {
+  IsBoolean,
   IsEnum,
   IsInt,
   IsNumber,
@@ -27,10 +28,21 @@ export class ProductQueryDto {
   @IsString()
   search?: string;
 
+  // STORE
+  @IsOptional()
+  @IsString()
+  storeId?: string;
+
   // CATEGORY
   @IsOptional()
   @IsString()
   categoryId?: string;
+
+  // STOCK
+  @IsOptional()
+  @Type(() => Boolean)
+  @IsBoolean()
+  inStock?: boolean;
 
   // PAGINATION
   @IsOptional()
