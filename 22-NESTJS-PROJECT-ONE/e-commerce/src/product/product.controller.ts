@@ -20,6 +20,8 @@ import type { AuthenticatedRequest } from 'src/common/interfaces/authenticated-u
 import { ProductQueryDto } from './dto/product-query-dto/product-query.dto';
 import { UpdateInventoryDto } from './dto/inventory-dtos/update-inventory.dto';
 import { GenerateVariantsDto } from './dto/variant-dtos/generate-variants.dto';
+import { CreateProductOptionDto } from './dto/product-option/create-product-option.dto';
+import { UpdateProductOptionDto } from './dto/product-option/update-product-option.dto';
 
 @Controller('products')
 export class ProductController {
@@ -217,10 +219,9 @@ export class ProductController {
   @Post(':productId/variants/generate')
   generateVariants(
     @Param('productId') productId: string,
-    @Body() dto: GenerateVariantsDto,
     @Req() req: AuthenticatedRequest,
   ) {
-    return this.productService.generateVariants(productId, dto, req.user);
+    return this.productService.generateVariants(productId, req.user);
   }
 
   @Get(':productId/variants')
@@ -277,5 +278,48 @@ export class ProductController {
     @Req() req: AuthenticatedRequest,
   ) {
     return this.productService.updateProductInventory(id, dto, req.user);
+  }
+
+  // PRODUCT VARIANT OPTIONS
+  @Post(':productId/options')
+  createProductOption(
+    @Param('productId') productId: string,
+    @Body() dto: CreateProductOptionDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.productService.createProductOption(productId, dto, req.user);
+  }
+
+  @Get(':productId/options')
+  getProductOptions(@Param('productId') productId: string) {
+    return this.productService.getProductOptions(productId);
+  }
+
+  @Patch(':productId/options/:optionId')
+  updateProductOption(
+    @Param('productId') productId: string,
+    @Param('optionId') optionId: string,
+    @Body() dto: UpdateProductOptionDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.productService.updateProductOption(
+      productId,
+      optionId,
+      dto,
+      req.user,
+    );
+  }
+
+  @Delete(':productId/options/:optionId')
+  deleteProductOption(
+    @Param('productId') productId: string,
+    @Param('optionId') optionId: string,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.productService.deleteProductOption(
+      productId,
+      optionId,
+      req.user,
+    );
   }
 }

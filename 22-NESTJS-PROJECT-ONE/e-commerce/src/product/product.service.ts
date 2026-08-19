@@ -29,6 +29,10 @@ import { PublicProductResponseDto } from './dto/product-dtos/public-product-resp
 import { InventoryResponseDto } from './dto/inventory-dtos/inventory-response.dto';
 import { UpdateInventoryDto } from './dto/inventory-dtos/update-inventory.dto';
 import { GenerateVariantsDto } from './dto/variant-dtos/generate-variants.dto';
+import { ProductOptionRepository } from './repository/product-option.repository';
+import { CreateProductOptionDto } from './dto/product-option/create-product-option.dto';
+import { ProductOption } from './entity/product-option.entity';
+import { UpdateProductOptionDto } from './dto/product-option/update-product-option.dto';
 
 export interface ProductListResult {
   products: Product[];
@@ -44,6 +48,7 @@ export class ProductService {
     private readonly productTagAssignmentRepository: ProductTagAssignmentRepository,
     private readonly productImageRepository: ProductImageRepository,
     private readonly productVariantRepository: ProductVariantRepository,
+    private readonly productOptionRepository: ProductOptionRepository,
   ) {}
 
   // -----------------------------------------
@@ -407,31 +412,6 @@ export class ProductService {
       },
       [[]],
     );
-  }
-
-  private normalizeVariantValues(values: string[]): string[] {
-    return [
-      ...new Set(
-        values.map((value) => value.trim()).filter((value) => value.length > 0),
-      ),
-    ];
-  }
-
-  private validateVariantCombinationCount(
-    options: { values: string[] }[],
-  ): void {
-    const count = options.reduce(
-      (total, option) => total * option.values.length,
-      1,
-    );
-
-    const MAX_VARIANTS = 100;
-
-    if (count > MAX_VARIANTS) {
-      throw new BadRequestException(
-        `Too many variant combinations. Maximum allowed is ${MAX_VARIANTS}`,
-      );
-    }
   }
 
   private getVariantCombinationKey(
@@ -1016,7 +996,6 @@ export class ProductService {
   // GENERATE PRODUCT VARIANT
   async generateVariants(
     productId: string,
-    dto: GenerateVariantsDto,
     user: AuthenticatedUser,
   ): Promise<ProductVariant[]> {
     const product = await this.productRepository.findById(productId);
@@ -1026,46 +1005,23 @@ export class ProductService {
 
     await this.validateProductOwnership(product, user);
 
-    // MAX 3 OPTIONS
-    if (dto.options.length > 3) {
+    const options =
+      await this.productOptionRepository.findByProductId(productId);
+
+    if (options.length === 0) {
+      throw new BadRequestException(
+        'Create at least one product option before generating variants',
+      );
+    }
+
+    if (options.length > 3) {
       throw new BadRequestException(
         'A product can have a maximum of 3 variant options',
       );
     }
 
-    const normalizedOptions = dto.options.map((option) => ({
-      name: option.name.trim(),
-      values: this.normalizeVariantValues(option.values),
-    }));
-
-    // VALIDATE OPTION NAMES & VALUES
-    for (const option of normalizedOptions) {
-      if (!option.name) {
-        throw new BadRequestException('Variant option name cannot be empty');
-      }
-
-      if (option.values.length === 0) {
-        throw new BadRequestException(
-          `Variant option "${option.name}" must contain at least one value`,
-        );
-      }
-    }
-
-    // OPTION NAME MUST BE UNIQUE
-    const optionNames = normalizedOptions.map((option) =>
-      option.name.toLowerCase(),
-    );
-
-    if (new Set(optionNames).size !== optionNames.length) {
-      throw new ConflictException('Variant option names must be unique');
-    }
-
-    // PREVENT EXCESSIVE COMBINATION
-    this.validateVariantCombinationCount(normalizedOptions);
-
-    // GENERATE CARTESIAN PRODUCT
     const combinations = this.generateCombinations(
-      normalizedOptions.map((option) => option.values),
+      options.map((option) => option.values),
     );
 
     // GET EXISTING VARIANTS
@@ -1086,24 +1042,21 @@ export class ProductService {
     const newVariants: ProductVariant[] = [];
     let position = existingVariants.length;
 
-    // CREATE NEW VARIANTS
     for (const combination of combinations) {
       const option1 = combination[0];
-      const option2 = combination[1];
-      const option3 = combination[2];
-
+      const option2 = combination.length > 1 ? combination[1] : null;
+      const option3 = combination.length > 2 ? combination[2] : null;
       const combinationKey = this.getVariantCombinationKey(
         option1,
         option2,
         option3,
       );
 
-      // PREVET DUPLICATE COMBINATIONS CREATION
       if (existingCombinationSet.has(combinationKey)) {
         continue;
       }
 
-      const name = combination.join(' / ');
+      const name = combination.filter(Boolean).join(' / ');
 
       const variant = this.productVariantRepository.create({
         storeId: product.storeId,
@@ -1114,8 +1067,17 @@ export class ProductService {
         option2,
         option3,
 
-        price: product.price, // SET PRODUCT'S DEFAULT PRICE
-        quantity: 0, // NEW VARIANTS START WITH 0 INVEENTORY
+        sku: null,
+        barcode: null,
+
+        price: product.price,
+        compareAtPrice: product.compareAtPrice ?? null,
+        costPrice: product.costPrice ?? null,
+
+        quantity: 0,
+        weight: product.weight ?? null,
+
+        imageId: null,
         position,
       });
 
@@ -1124,11 +1086,8 @@ export class ProductService {
       position++;
     }
 
-    // IF ALL VARIANTS ALREADY EXISTS
     if (newVariants.length === 0) {
-      throw new ConflictException(
-        'All requested variant combinations already exist',
-      );
+      throw new ConflictException('All variant combinations already exist');
     }
 
     return this.productVariantRepository.saveMany(newVariants);
@@ -1515,6 +1474,162 @@ export class ProductService {
       lowStockThreshold: updatedProduct.lowStockThreshold,
       inStock,
       lowStock,
+    };
+  }
+  // -----------------------------------------
+
+  // -----------------------------------------
+  // CREATE PRODUCT OPTION
+  async createProductOption(
+    productId: string,
+    dto: CreateProductOptionDto,
+    user: AuthenticatedUser,
+  ): Promise<ProductOption> {
+    const product = await this.productRepository.findById(productId);
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    await this.validateProductOwnership(product, user);
+
+    const existingOptions =
+      await this.productOptionRepository.findByProductId(productId);
+
+    if (existingOptions.length >= 3) {
+      throw new BadRequestException(
+        'A product can have a maximum of 3 variant options',
+      );
+    }
+
+    const name = dto.name.trim();
+
+    const values = [
+      ...new Set(
+        dto.values
+          .map((value) => value.trim())
+          .filter((value) => value.length > 0),
+      ),
+    ];
+
+    if (values.length === 0) {
+      throw new BadRequestException(
+        'Variant option must contain at least one value',
+      );
+    }
+
+    const duplicateName = existingOptions.some(
+      (option) => option.name.toLowerCase() === name.toLowerCase(),
+    );
+
+    if (duplicateName) {
+      throw new ConflictException(
+        'A variant option with this name already exists',
+      );
+    }
+
+    return this.productOptionRepository.create({
+      productId,
+      name,
+      values,
+      position: existingOptions.length,
+    });
+  }
+
+  // GET PRODUCT OPTIONS
+  async getProductOptions(productId: string): Promise<ProductOption[]> {
+    const product = await this.productRepository.findById(productId);
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    return this.productOptionRepository.findByProductId(productId);
+  }
+
+  // UPDATE PRODUCT OPTION
+  async updateProductOption(
+    productId: string,
+    optionId: string,
+    dto: UpdateProductOptionDto,
+    user: AuthenticatedUser,
+  ): Promise<ProductOption> {
+    const product = await this.productRepository.findById(productId);
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    await this.validateProductOwnership(product, user);
+
+    const option = await this.productOptionRepository.findById(optionId);
+
+    if (!option || option.productId !== productId) {
+      throw new NotFoundException('Product option not found');
+    }
+
+    if (dto.name !== undefined) {
+      const name = dto.name.trim();
+
+      const existingOptions =
+        await this.productOptionRepository.findByProductId(productId);
+
+      const duplicate = existingOptions.some(
+        (existing) =>
+          existing.id !== optionId &&
+          existing.name.toLowerCase() === name.toLowerCase(),
+      );
+
+      if (duplicate) {
+        throw new ConflictException(
+          'A variant option with this name already exists',
+        );
+      }
+
+      option.name = name;
+    }
+
+    if (dto.values !== undefined) {
+      const values = [
+        ...new Set(
+          dto.values
+            .map((value) => value.trim())
+            .filter((value) => value.length > 0),
+        ),
+      ];
+
+      if (values.length === 0) {
+        throw new BadRequestException(
+          'Variant option must contain at least one value',
+        );
+      }
+
+      option.values = values;
+    }
+
+    return this.productOptionRepository.save(option);
+  }
+
+  // DELETE PRODUCT OPTION
+  async deleteProductOption(
+    productId: string,
+    optionId: string,
+    user: AuthenticatedUser,
+  ): Promise<{ message: string }> {
+    const product = await this.productRepository.findById(productId);
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    await this.validateProductOwnership(product, user);
+
+    const option = await this.productOptionRepository.findById(optionId);
+
+    if (!option || option.productId !== productId) {
+      throw new NotFoundException('Product option not found');
+    }
+
+    await this.productOptionRepository.delete(optionId);
+
+    return {
+      message: 'Product option deleted successfully',
     };
   }
 }

@@ -8,10 +8,10 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { Product } from "./product.entity";
+import { Product } from './product.entity';
 
 @Entity('product_options')
-@Index(['productId', 'position'])
+@Index(['productId', 'position'], { unique: true })
 export class ProductOption {
   @PrimaryGeneratedColumn('uuid')
   id: string;
@@ -20,7 +20,7 @@ export class ProductOption {
   @Index()
   productId: string;
 
-  @ManyToOne(() => Product, (product) =>product.options, {
+  @ManyToOne(() => Product, {
     onDelete: 'CASCADE',
   })
   @JoinColumn({ name: 'productId' })
