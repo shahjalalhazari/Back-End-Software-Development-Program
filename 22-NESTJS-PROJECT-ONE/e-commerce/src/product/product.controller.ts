@@ -21,6 +21,7 @@ import { ProductQueryDto } from './dto/product-query-dto/product-query.dto';
 import { UpdateInventoryDto } from './dto/inventory-dtos/update-inventory.dto';
 import { CreateProductOptionDto } from './dto/product-option/create-product-option.dto';
 import { UpdateProductOptionDto } from './dto/product-option/update-product-option.dto';
+import { AddProductImageDto } from './dto/product-image-dtos/add-product-image.dto';
 
 @Controller('products')
 export class ProductController {
@@ -145,17 +146,13 @@ export class ProductController {
   @Post(':productId/images')
   addProductImage(
     @Param('productId') productId: string,
-    @Body()
-    body: {
-      url: string;
-      altText?: string;
-    },
+    @Body() dto: AddProductImageDto,
     @Req() req: AuthenticatedRequest,
   ) {
     return this.productService.addProductImage(
       productId,
-      body.url,
-      body.altText,
+      dto.url,
+      dto.altText,
       req.user,
     );
   }

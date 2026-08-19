@@ -39,6 +39,7 @@ export interface ProductListResult {
 }
 @Injectable()
 export class ProductService {
+  private static readonly MAX_PRODUCT_IMAGES = 10;
   constructor(
     private readonly productRepository: ProductRepository,
     private readonly storeService: StoreService,
@@ -849,7 +850,6 @@ export class ProductService {
     user: AuthenticatedUser,
   ): Promise<ProductImage> {
     const product = await this.productRepository.findById(productId);
-
     if (!product) {
       throw new NotFoundException('Product not found');
     }
@@ -858,12 +858,19 @@ export class ProductService {
 
     const images = await this.productImageRepository.findByProductId(productId);
 
+    // MAX 10 IMAGES
+    if (images.length >= ProductService.MAX_PRODUCT_IMAGES) {
+      throw new BadRequestException(
+        `A product can have a maximum of ${ProductService.MAX_PRODUCT_IMAGES} images`,
+      );
+    }
+
     const image = this.productImageRepository.create({
       productId,
-      url,
-      altText,
+      url: url.trim(),
+      altText: altText?.trim(),
       position: images.length,
-      isPrimary: images.length === 0,
+      isPrimary: images.length === 0, // FIRST IMAGE IS PRIMARY
     });
 
     return this.productImageRepository.save(image);
@@ -947,11 +954,32 @@ export class ProductService {
     await this.validateProductOwnership(product, user);
 
     const image = await this.productImageRepository.findById(imageId);
+
     if (!image || image.productId !== productId) {
       throw new NotFoundException('Product image not found');
     }
 
+    const wasPrimary = image.isPrimary;
     await this.productImageRepository.delete(imageId);
+
+    // IF DELETED IMAGE IS PRIMARY THEN PROMOTE ANOTHER IMAGE TO PRIMARY
+    if (wasPrimary) {
+      const remainingImages =
+        await this.productImageRepository.findByProductId(productId);
+
+      if (remainingImages.length > 0) {
+        const nextPrimaryImage = remainingImages.sort(
+          (a, b) => a.position - b.position,
+        )[0];
+
+        await this.productImageRepository.clearPrimary(productId);
+
+        nextPrimaryImage.isPrimary = true;
+
+        await this.productImageRepository.save(nextPrimaryImage);
+      }
+    }
+
     return {
       message: 'Product image deleted successfully',
     };

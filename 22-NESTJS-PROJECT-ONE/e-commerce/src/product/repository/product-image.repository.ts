@@ -43,15 +43,7 @@ export class ProductImageRepository {
   }
 
   async clearPrimary(productId: string): Promise<void> {
-    await this.repository.update(
-      {
-        productId,
-        isPrimary: true,
-      },
-      {
-        isPrimary: false,
-      },
-    );
+    await this.repository.update({ productId }, { isPrimary: false });
   }
 
   async updatePosition(id: string, position: number): Promise<void> {
