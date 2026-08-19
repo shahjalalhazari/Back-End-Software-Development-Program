@@ -28,7 +28,6 @@ import { ProductQueryDto } from './dto/product-query-dto/product-query.dto';
 import { PublicProductResponseDto } from './dto/product-dtos/public-product-response.dto';
 import { InventoryResponseDto } from './dto/inventory-dtos/inventory-response.dto';
 import { UpdateInventoryDto } from './dto/inventory-dtos/update-inventory.dto';
-import { GenerateVariantsDto } from './dto/variant-dtos/generate-variants.dto';
 import { ProductOptionRepository } from './repository/product-option.repository';
 import { CreateProductOptionDto } from './dto/product-option/create-product-option.dto';
 import { ProductOption } from './entity/product-option.entity';
@@ -102,6 +101,38 @@ export class ProductService {
     }
 
     return store;
+  }
+
+  // VALIDATE STORE OWNERSHIP FOR PRODUCT CREATION
+  private async validateStoreOwnership(
+    storeId: string,
+    user: AuthenticatedUser,
+  ): Promise<void> {
+    const store = await this.storeService.findById(storeId);
+    if (!store) {
+      throw new NotFoundException('Store not found');
+    }
+    if (store.status !== StoreStatus.ACTIVE) {
+      throw new ForbiddenException(
+        'Store must be active before creating products',
+      );
+    }
+    // SYSTEM ADMIN CAN MANAGE PRODUCTS IN ANY STORE.
+    if (user.role === UserRole.SYSTEM_ADMIN) {
+      return;
+    }
+
+    // ONLY VENDORS CAN CREATE PRODUCTS.
+    if (user.role !== UserRole.VENDOR) {
+      throw new ForbiddenException('Only store owners can create products');
+    }
+
+    // CHECK THAT THE AUTHENTICATED USER OWNS THE STORE.
+    if (store.userId !== user.id) {
+      throw new ForbiddenException(
+        'You are not allowed to create products in this store',
+      );
+    }
   }
 
   // GENERATE UNIQUE TAG SLUG
@@ -453,17 +484,21 @@ export class ProductService {
   // -----------------------------------------
 
   // -----------------------------------------
-  // CREATE
+  // CREATE PRODUCT
   async create(
     createProductDto: CreateProductDto,
+    user: AuthenticatedUser,
   ): Promise<ProductResponseDto> {
-    await this.validateActiveStore(createProductDto.storeId);
+    // Validate that the store exists, is active,
+    // and belongs to the authenticated vendor.
+    await this.validateStoreOwnership(createProductDto.storeId, user);
 
     const slug = await this.generateUniqueSlug(
       createProductDto.slug ?? createProductDto.name,
       createProductDto.storeId,
     );
 
+    // Check SKU uniqueness.
     if (createProductDto.sku) {
       const existingSku = await this.productRepository.findByStoreAndSku(
         createProductDto.storeId,

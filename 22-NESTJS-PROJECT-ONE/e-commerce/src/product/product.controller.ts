@@ -19,7 +19,6 @@ import { UpdateVariantDto } from './dto/variant-dtos/update-variant.dto';
 import type { AuthenticatedRequest } from 'src/common/interfaces/authenticated-user.interface';
 import { ProductQueryDto } from './dto/product-query-dto/product-query.dto';
 import { UpdateInventoryDto } from './dto/inventory-dtos/update-inventory.dto';
-import { GenerateVariantsDto } from './dto/variant-dtos/generate-variants.dto';
 import { CreateProductOptionDto } from './dto/product-option/create-product-option.dto';
 import { UpdateProductOptionDto } from './dto/product-option/update-product-option.dto';
 
@@ -31,8 +30,9 @@ export class ProductController {
   @Post()
   create(
     @Body() createProductDto: CreateProductDto,
+    @Req() req: AuthenticatedRequest,
   ): Promise<ProductResponseDto> {
-    return this.productService.create(createProductDto);
+    return this.productService.create(createProductDto, req.user);
   }
 
   // GET ALL PRODUCTS
