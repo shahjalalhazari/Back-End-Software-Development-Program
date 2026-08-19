@@ -38,14 +38,14 @@ export class ProductVariant {
   @JoinColumn({ name: 'productId' })
   product: Product;
 
-  @Column()
+  @Column({ length: 200 })
   name:string;
 
-  @Column({ nullable: true })
-  sku?: string;
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  sku: string | null;
 
-  @Column({ nullable: true })
-  barcode?: string;
+  @Column({ type: 'varchar', length: 100, nullable: true })
+  barcode: string | null;
 
   @Column({
     type: 'decimal',
@@ -62,7 +62,7 @@ export class ProductVariant {
     nullable: true,
     transformer: DecimalTransformer,
   })
-  compareAtPrice?: number;
+  compareAtPrice: number | null;
 
   @Column({
     type: 'decimal',
@@ -71,7 +71,7 @@ export class ProductVariant {
     nullable: true,
     transformer: DecimalTransformer,
   })
-  costPrice?: number;
+  costPrice: number | null;
 
   @Column({
     type: 'int',
@@ -86,25 +86,28 @@ export class ProductVariant {
     nullable: true,
     transformer: DecimalTransformer,
   })
-  weight?: number;
+  weight: number | null;
 
   @Column()
   option1: string;
 
-  @Column({ nullable: true })
-  option2?: string;
+  @Column({ type: 'varchar', nullable: true })
+  option2: string | null;
 
-  @Column({ nullable: true })
-  option3?: string;
+  @Column({ type: 'varchar', nullable: true })
+  option3: string | null;
 
   @Column('uuid', { nullable: true })
-  imageId?: string;
+  imageId: string | null;
 
-  @ManyToOne(() => ProductImage, { onDelete: 'SET NULL' })
+  @ManyToOne(() => ProductImage, {
+    nullable: true,
+    onDelete: 'SET NULL',
+  })
   @JoinColumn({ name: 'imageId' })
-  image?: ProductImage;
+  image: ProductImage | null;
 
-  @Column({ default:0 })
+  @Column({ default: 0 })
   position: number;
 
   @CreateDateColumn()

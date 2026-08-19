@@ -19,6 +19,7 @@ import { UpdateVariantDto } from './dto/variant-dtos/update-variant.dto';
 import type { AuthenticatedRequest } from 'src/common/interfaces/authenticated-user.interface';
 import { ProductQueryDto } from './dto/product-query-dto/product-query.dto';
 import { UpdateInventoryDto } from './dto/inventory-dtos/update-inventory.dto';
+import { GenerateVariantsDto } from './dto/variant-dtos/generate-variants.dto';
 
 @Controller('products')
 export class ProductController {
@@ -211,6 +212,15 @@ export class ProductController {
     @Req() req: AuthenticatedRequest,
   ) {
     return this.productService.createVariant(productId, dto, req.user);
+  }
+
+  @Post(':productId/variants/generate')
+  generateVariants(
+    @Param('productId') productId: string,
+    @Body() dto: GenerateVariantsDto,
+    @Req() req: AuthenticatedRequest,
+  ) {
+    return this.productService.generateVariants(productId, dto, req.user);
   }
 
   @Get(':productId/variants')

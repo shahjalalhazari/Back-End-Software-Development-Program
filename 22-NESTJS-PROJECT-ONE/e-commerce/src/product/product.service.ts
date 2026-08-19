@@ -28,6 +28,7 @@ import { ProductQueryDto } from './dto/product-query-dto/product-query.dto';
 import { PublicProductResponseDto } from './dto/product-dtos/public-product-response.dto';
 import { InventoryResponseDto } from './dto/inventory-dtos/inventory-response.dto';
 import { UpdateInventoryDto } from './dto/inventory-dtos/update-inventory.dto';
+import { GenerateVariantsDto } from './dto/variant-dtos/generate-variants.dto';
 
 export interface ProductListResult {
   products: Product[];
@@ -386,6 +387,89 @@ export class ProductService {
     }
   }
 
+  // GENERATE PRODUCT VARIATION COMBINATION
+  private generateCombinations(values: string[][]): string[][] {
+    if (values.length === 0) {
+      return [];
+    }
+
+    return values.reduce<string[][]>(
+      (combinations, currentValues) => {
+        const result: string[][] = [];
+
+        for (const combination of combinations) {
+          for (const value of currentValues) {
+            result.push([...combination, value]);
+          }
+        }
+
+        return result;
+      },
+      [[]],
+    );
+  }
+
+  private normalizeVariantValues(values: string[]): string[] {
+    return [
+      ...new Set(
+        values.map((value) => value.trim()).filter((value) => value.length > 0),
+      ),
+    ];
+  }
+
+  private validateVariantCombinationCount(
+    options: { values: string[] }[],
+  ): void {
+    const count = options.reduce(
+      (total, option) => total * option.values.length,
+      1,
+    );
+
+    const MAX_VARIANTS = 100;
+
+    if (count > MAX_VARIANTS) {
+      throw new BadRequestException(
+        `Too many variant combinations. Maximum allowed is ${MAX_VARIANTS}`,
+      );
+    }
+  }
+
+  private getVariantCombinationKey(
+    option1?: string | null,
+    option2?: string | null,
+    option3?: string | null,
+  ): string {
+    return [option1 ?? '', option2 ?? '', option3 ?? '']
+      .map((value) => value.trim().toLowerCase())
+      .join('|');
+  }
+
+  private validateVariantOptions(
+    option1?: string,
+    option2?: string,
+    option3?: string,
+  ): void {
+    if (!option1 && (option2 || option3)) {
+      throw new BadRequestException(
+        'option1 is required when option2 or option3 is provided',
+      );
+    }
+
+    if (!option2 && option3) {
+      throw new BadRequestException(
+        'option2 is required when option3 is provided',
+      );
+    }
+  }
+
+  private normalizeVariantOption(value?: string): string | undefined {
+    if (value === undefined || value === null) {
+      return undefined;
+    }
+    const normalized = value.trim();
+
+    return normalized.length > 0 ? normalized : undefined;
+  }
   // -----------------------------------------
 
   // -----------------------------------------
@@ -902,6 +986,8 @@ export class ProductService {
     const variants =
       await this.productVariantRepository.findByProductId(productId);
 
+    this.validateVariantOptions(dto.option1, dto.option2, dto.option3);
+
     const name = [dto.option1, dto.option2, dto.option3]
       .filter(Boolean)
       .join(' / ');
@@ -925,6 +1011,127 @@ export class ProductService {
     });
 
     return this.productVariantRepository.save(variant);
+  }
+
+  // GENERATE PRODUCT VARIANT
+  async generateVariants(
+    productId: string,
+    dto: GenerateVariantsDto,
+    user: AuthenticatedUser,
+  ): Promise<ProductVariant[]> {
+    const product = await this.productRepository.findById(productId);
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    await this.validateProductOwnership(product, user);
+
+    // MAX 3 OPTIONS
+    if (dto.options.length > 3) {
+      throw new BadRequestException(
+        'A product can have a maximum of 3 variant options',
+      );
+    }
+
+    const normalizedOptions = dto.options.map((option) => ({
+      name: option.name.trim(),
+      values: this.normalizeVariantValues(option.values),
+    }));
+
+    // VALIDATE OPTION NAMES & VALUES
+    for (const option of normalizedOptions) {
+      if (!option.name) {
+        throw new BadRequestException('Variant option name cannot be empty');
+      }
+
+      if (option.values.length === 0) {
+        throw new BadRequestException(
+          `Variant option "${option.name}" must contain at least one value`,
+        );
+      }
+    }
+
+    // OPTION NAME MUST BE UNIQUE
+    const optionNames = normalizedOptions.map((option) =>
+      option.name.toLowerCase(),
+    );
+
+    if (new Set(optionNames).size !== optionNames.length) {
+      throw new ConflictException('Variant option names must be unique');
+    }
+
+    // PREVENT EXCESSIVE COMBINATION
+    this.validateVariantCombinationCount(normalizedOptions);
+
+    // GENERATE CARTESIAN PRODUCT
+    const combinations = this.generateCombinations(
+      normalizedOptions.map((option) => option.values),
+    );
+
+    // GET EXISTING VARIANTS
+    const existingVariants =
+      await this.productVariantRepository.findByProductId(productId);
+
+    // BUILD SET OF EXISTING COMBINATIONS
+    const existingCombinationSet = new Set(
+      existingVariants.map((variant) =>
+        this.getVariantCombinationKey(
+          variant.option1,
+          variant.option2,
+          variant.option3,
+        ),
+      ),
+    );
+
+    const newVariants: ProductVariant[] = [];
+    let position = existingVariants.length;
+
+    // CREATE NEW VARIANTS
+    for (const combination of combinations) {
+      const option1 = combination[0];
+      const option2 = combination[1];
+      const option3 = combination[2];
+
+      const combinationKey = this.getVariantCombinationKey(
+        option1,
+        option2,
+        option3,
+      );
+
+      // PREVET DUPLICATE COMBINATIONS CREATION
+      if (existingCombinationSet.has(combinationKey)) {
+        continue;
+      }
+
+      const name = combination.join(' / ');
+
+      const variant = this.productVariantRepository.create({
+        storeId: product.storeId,
+        productId: product.id,
+        name,
+
+        option1,
+        option2,
+        option3,
+
+        price: product.price, // SET PRODUCT'S DEFAULT PRICE
+        quantity: 0, // NEW VARIANTS START WITH 0 INVEENTORY
+        position,
+      });
+
+      newVariants.push(variant);
+      existingCombinationSet.add(combinationKey);
+      position++;
+    }
+
+    // IF ALL VARIANTS ALREADY EXISTS
+    if (newVariants.length === 0) {
+      throw new ConflictException(
+        'All requested variant combinations already exist',
+      );
+    }
+
+    return this.productVariantRepository.saveMany(newVariants);
   }
 
   // GET PRODUCT VARIENT
@@ -972,74 +1179,163 @@ export class ProductService {
 
     await this.validateProductOwnership(product, user);
 
+    // GET VARIANT
     const variant = await this.productVariantRepository.findById(variantId);
-
     if (!variant || variant.productId !== productId) {
       throw new NotFoundException('Product variant not found');
     }
 
+    // NORMALIZE OPTIONS
+    const nextOption1: string =
+      dto.option1 !== undefined
+        ? (this.normalizeVariantOption(dto.option1) ?? '')
+        : variant.option1;
+
+    const nextOption2: string | null =
+      dto.option2 !== undefined
+        ? (this.normalizeVariantOption(dto.option2) ?? null)
+        : (variant.option2 ?? null);
+
+    const nextOption3: string | null =
+      dto.option3 !== undefined
+        ? (this.normalizeVariantOption(dto.option3) ?? null)
+        : (variant.option3 ?? null);
+
+    // VALIDATE OPTION VALUES
+    if (dto.option1 !== undefined && !nextOption1) {
+      throw new BadRequestException('Option 1 cannot be empty');
+    }
+    if (dto.option2 !== undefined && !nextOption2) {
+      throw new BadRequestException('Option 2 cannot be empty');
+    }
+    if (dto.option3 !== undefined && !nextOption3) {
+      throw new BadRequestException('Option 3 cannot be empty');
+    }
+
+    // PRICE VALIDATION
+    const nextPrice = dto.price !== undefined ? dto.price : variant.price;
+    const nextCompareAtPrice =
+      dto.compareAtPrice !== undefined
+        ? dto.compareAtPrice
+        : variant.compareAtPrice;
     if (
-      dto.compareAtPrice !== undefined &&
-      dto.price !== undefined &&
-      dto.compareAtPrice < dto.price
+      nextCompareAtPrice !== undefined &&
+      nextCompareAtPrice !== null &&
+      nextCompareAtPrice < nextPrice
     ) {
       throw new BadRequestException(
         'Compare price must be greater than or equal to price',
       );
     }
 
-    if (
-      dto.compareAtPrice !== undefined &&
-      dto.price === undefined &&
-      variant.compareAtPrice !== undefined &&
-      dto.compareAtPrice < variant.price
-    ) {
-      throw new BadRequestException(
-        'Compare price must be greater than or equal to price',
-      );
-    }
-
-    if (
-      dto.price !== undefined &&
-      dto.compareAtPrice === undefined &&
-      variant.compareAtPrice !== undefined &&
-      variant.compareAtPrice < dto.price
-    ) {
-      throw new BadRequestException(
-        'Compare price must be greater than or equal to price',
-      );
-    }
-
-    if (dto.sku && dto.sku !== variant.sku) {
+    // SKU UNIQUENESS
+    if (dto.sku !== undefined && dto.sku !== variant.sku) {
       const existingVariant =
         await this.productVariantRepository.findByStoreAndSku(
           variant.storeId,
           dto.sku,
         );
-
-      if (existingVariant && existingVariant.id !== variantId) {
+      if (existingVariant && existingVariant.id !== variant.id) {
         throw new ConflictException('Variant SKU already exists in this store');
       }
     }
 
-    if (dto.imageId) {
-      const image = await this.productImageRepository.findById(dto.imageId);
+    // IMAGE VALIDATION
+    if (dto.imageId !== undefined) {
+      if (dto.imageId === null) {
+        variant.imageId = null;
+      } else {
+        const image = await this.productImageRepository.findById(dto.imageId);
 
-      if (!image || image.productId !== productId) {
-        throw new BadRequestException('Image does not belong to this product');
+        if (!image || image.productId !== productId) {
+          throw new BadRequestException(
+            'Image does not belong to this product',
+          );
+        }
+
+        variant.imageId = dto.imageId;
       }
     }
 
-    Object.assign(variant, dto);
+    // CHECK DUPLICATE COMBINATION
+    const combinationChanged =
+      nextOption1 !== variant.option1 ||
+      nextOption2 !== variant.option2 ||
+      nextOption3 !== variant.option3;
 
-    const nextOption1 = dto.option1 ?? variant.option1;
-    const nextOption2 = dto.option2 ?? variant.option2;
-    const nextOption3 = dto.option3 ?? variant.option3;
+    if (combinationChanged) {
+      const variants =
+        await this.productVariantRepository.findByProductId(productId);
+      const newCombinationKey = this.getVariantCombinationKey(
+        nextOption1,
+        nextOption2,
+        nextOption3,
+      );
+      const duplicateVariant = variants.find((existingVariant) => {
+        if (existingVariant.id === variant.id) {
+          return false;
+        }
 
-    variant.name = [nextOption1, nextOption2, nextOption3]
-      .filter(Boolean)
-      .join(' / ');
+        const existingKey = this.getVariantCombinationKey(
+          existingVariant.option1,
+          existingVariant.option2,
+          existingVariant.option3,
+        );
 
+        return existingKey === newCombinationKey;
+      });
+
+      if (duplicateVariant) {
+        throw new ConflictException('This variant combination already exists');
+      }
+    }
+
+    // UPDATE OPTIONS
+    variant.option1 = nextOption1;
+    variant.option2 = nextOption2;
+    variant.option3 = nextOption3;
+
+    // UPDATE NAME
+    if (
+      dto.option1 !== undefined ||
+      dto.option2 !== undefined ||
+      dto.option3 !== undefined
+    ) {
+      variant.name = [nextOption1, nextOption2, nextOption3]
+        .filter(Boolean)
+        .join(' / ');
+    }
+
+    // UPDATE BASIC FIELDS
+    if (dto.name !== undefined) {
+      variant.name = dto.name.trim();
+    }
+    if (dto.sku !== undefined) {
+      variant.sku = dto.sku;
+    }
+    if (dto.barcode !== undefined) {
+      variant.barcode = dto.barcode;
+    }
+    if (dto.price !== undefined) {
+      variant.price = dto.price;
+    }
+    if (dto.compareAtPrice !== undefined) {
+      variant.compareAtPrice = dto.compareAtPrice;
+    }
+    if (dto.costPrice !== undefined) {
+      variant.costPrice = dto.costPrice;
+    }
+    if (dto.quantity !== undefined) {
+      variant.quantity = dto.quantity;
+    }
+    if (dto.weight !== undefined) {
+      variant.weight = dto.weight;
+    }
+    if (dto.position !== undefined) {
+      variant.position = dto.position;
+    }
+
+    // SAVE
     return this.productVariantRepository.save(variant);
   }
 
@@ -1111,7 +1407,7 @@ export class ProductService {
       variants: (product.variants ?? []).map((variant) => ({
         id: variant.id,
         name: variant.name,
-        sku: variant.sku,
+        sku: variant.sku ?? undefined,
         price: Number(variant.price),
         compareAtPrice:
           variant.compareAtPrice !== null &&
@@ -1121,10 +1417,10 @@ export class ProductService {
         quantity: variant.quantity,
 
         option1: variant.option1,
-        option2: variant.option2,
-        option3: variant.option3,
+        option2: variant.option2 ?? undefined,
+        option3: variant.option3 ?? undefined,
 
-        imageId: variant.imageId,
+        imageId: variant.imageId ?? undefined,
       })),
 
       categories: (product.productCategories ?? [])

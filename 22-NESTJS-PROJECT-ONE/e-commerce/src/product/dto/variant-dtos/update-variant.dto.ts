@@ -1,60 +1,75 @@
 import {
+  IsInt,
   IsNumber,
   IsOptional,
   IsString,
   IsUUID,
-  Matches,
+  MaxLength,
   Min,
 } from 'class-validator';
 
 export class UpdateVariantDto {
-  @IsString()
-  @Matches(/^[a-zA-Z0-9_-]+$/)
   @IsOptional()
+  @IsString()
+  @MaxLength(200)
+  name?: string;
+
+  @IsOptional()
+  @IsString()
+  @MaxLength(100)
   sku?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
+  @MaxLength(100)
   barcode?: string;
 
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  @IsOptional()
   price?: number;
 
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  @IsOptional()
   compareAtPrice?: number;
 
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  @IsOptional()
   costPrice?: number;
 
-  @IsNumber()
-  @Min(0)
   @IsOptional()
+  @IsInt()
+  @Min(0)
   quantity?: number;
 
+  @IsOptional()
   @IsNumber()
   @Min(0)
-  @IsOptional()
   weight?: number;
 
-  @IsString()
   @IsOptional()
+  @IsString()
+  @MaxLength(100)
   option1?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
+  @MaxLength(100)
   option2?: string;
 
-  @IsString()
   @IsOptional()
+  @IsString()
+  @MaxLength(100)
   option3?: string;
 
-  @IsUUID('4')
   @IsOptional()
+  @IsUUID()
   imageId?: string;
+
+  @IsOptional()
+  @IsInt()
+  @Min(0)
+  position?: number;
 }
