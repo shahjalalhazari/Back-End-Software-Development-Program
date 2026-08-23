@@ -27,6 +27,10 @@ import { AddProductImageDto } from './dto/product-image-dtos/add-product-image.d
 export class ProductController {
   constructor(private readonly productService: ProductService) {}
 
+  // -----------------------------------------
+  // PRODUCTS
+  // -----------------------------------------
+
   // CREATE PRODUCT
   @Post()
   create(
@@ -42,12 +46,10 @@ export class ProductController {
     return this.productService.findAll(query);
   }
 
-  // GET PRODUCTS BY STORE
-  @Get('store/:storeId')
-  findByStoreId(
-    @Param('storeId') storeId: string,
-  ): Promise<ProductResponseDto[]> {
-    return this.productService.findByStoreId(storeId);
+  // GET PRODUCT BY ID
+  @Get(':id')
+  findById(@Param('id') id: string): Promise<ProductResponseDto> {
+    return this.productService.findById(id);
   }
 
   // GET PRODUCT BY STORE + SKU
@@ -68,16 +70,12 @@ export class ProductController {
     return this.productService.findByStoreAndSlug(storeId, slug);
   }
 
-  // GET PUBLIC PRODUCT BY SLUG
-  @Get('slug/:slug')
-  findPublishedBySlug(@Param('slug') slug: string) {
-    return this.productService.findPublishedBySlug(slug);
-  }
-
-  // GET PRODUCT BY ID
-  @Get(':id')
-  findById(@Param('id') id: string): Promise<ProductResponseDto> {
-    return this.productService.findById(id);
+  // GET PRODUCTS BY STORE
+  @Get('store/:storeId')
+  findByStoreId(
+    @Param('storeId') storeId: string,
+  ): Promise<ProductResponseDto[]> {
+    return this.productService.findByStoreId(storeId);
   }
 
   // UPDATE PRODUCT
@@ -90,13 +88,13 @@ export class ProductController {
     return this.productService.updateProduct(id, updateProductDto, req.user);
   }
 
-  // PUBLISH PRODUCT
-  @Post(':id/publish')
-  publish(
+  // SOFT DELETE PRODUCT
+  @Delete(':id')
+  remove(
     @Param('id') id: string,
     @Req() req: AuthenticatedRequest,
-  ): Promise<ProductResponseDto> {
-    return this.productService.publishProduct(id, req.user);
+  ): Promise<{ message: string }> {
+    return this.productService.removeProduct(id, req.user);
   }
 
   // RESTORE PRODUCT
@@ -105,13 +103,13 @@ export class ProductController {
     return this.productService.restoreProduct(id);
   }
 
-  // SOFT DELETE PRODUCT
-  @Delete(':id')
-  remove(
+  // PUBLISH PRODUCT
+  @Post(':id/publish')
+  publish(
     @Param('id') id: string,
     @Req() req: AuthenticatedRequest,
-  ): Promise<{ message: string }> {
-    return this.productService.removeProduct(id, req.user);
+  ): Promise<ProductResponseDto> {
+    return this.productService.publishProduct(id, req.user);
   }
 
   // HIDE PRODUCT
@@ -141,7 +139,25 @@ export class ProductController {
     return this.productService.archiveProduct(id, req.user);
   }
 
-  // ------------------------------------
+  // RESTORE ARCHIVE PRODUCT
+  @Post(':id/restoreAchive')
+  restoreArchive(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ProductResponseDto> {
+    return this.productService.restoreArchivedProduct(id, req.user);
+  }
+
+  // GET PUBLIC PRODUCT BY SLUG
+  @Get('slug/:slug')
+  findPublishedBySlug(@Param('slug') slug: string) {
+    return this.productService.findPublishedBySlug(slug);
+  }
+
+  // -----------------------------------------
+  // PRODUCT IMAGES
+  // -----------------------------------------
+
   // ADD PRODUCT IMAGE
   @Post(':productId/images')
   addProductImage(
@@ -203,7 +219,11 @@ export class ProductController {
     return this.productService.deleteProductImage(productId, imageId, req.user);
   }
 
-  // ----------------------------------------
+  // -----------------------------------------
+  // PRODUCT VAIRANTS
+  // -----------------------------------------
+
+  // ADD VARINAT
   @Post(':productId/variants')
   createVariant(
     @Param('productId') productId: string,
@@ -213,6 +233,7 @@ export class ProductController {
     return this.productService.createVariant(productId, dto, req.user);
   }
 
+  // GENERATE VARIANT
   @Post(':productId/variants/generate')
   generateVariants(
     @Param('productId') productId: string,
@@ -221,11 +242,13 @@ export class ProductController {
     return this.productService.generateVariants(productId, req.user);
   }
 
+  // GET ALL VARIANTS
   @Get(':productId/variants')
   getProductVariants(@Param('productId') productId: string) {
     return this.productService.getProductVariants(productId);
   }
 
+  // GET SINGLE VARIANT
   @Get(':productId/variants/:variantId')
   getVariantById(
     @Param('productId') productId: string,
@@ -234,6 +257,7 @@ export class ProductController {
     return this.productService.getVariantById(productId, variantId);
   }
 
+  // UPDATE VARIANT
   @Patch(':productId/variants/:variantId')
   updateVariant(
     @Param('productId') productId: string,
@@ -249,6 +273,7 @@ export class ProductController {
     );
   }
 
+  // DELETE VARIANT
   @Delete(':productId/variants/:variantId')
   deleteVariant(
     @Param('productId') productId: string,
@@ -260,6 +285,9 @@ export class ProductController {
 
   // -----------------------------------------
   // PRODUCT INVENTORY
+  // -----------------------------------------
+
+  // GET INVENTORY
   @Get(':id/inventory')
   getProductInventory(
     @Param('id') id: string,
@@ -268,6 +296,7 @@ export class ProductController {
     return this.productService.getProductInventory(id, req.user);
   }
 
+  // UDPATE INVENTORY
   @Patch(':id/inventory')
   updateProductInventory(
     @Param('id') id: string,
@@ -277,7 +306,11 @@ export class ProductController {
     return this.productService.updateProductInventory(id, dto, req.user);
   }
 
+  // -----------------------------------------
   // PRODUCT VARIANT OPTIONS
+  // -----------------------------------------
+
+  // ADD OPTION
   @Post(':productId/options')
   createProductOption(
     @Param('productId') productId: string,
@@ -287,11 +320,13 @@ export class ProductController {
     return this.productService.createProductOption(productId, dto, req.user);
   }
 
+  // GET OPTIONS
   @Get(':productId/options')
   getProductOptions(@Param('productId') productId: string) {
     return this.productService.getProductOptions(productId);
   }
 
+  // UPDATE OPTION
   @Patch(':productId/options/:optionId')
   updateProductOption(
     @Param('productId') productId: string,
@@ -307,6 +342,7 @@ export class ProductController {
     );
   }
 
+  // DELETE OPTION
   @Delete(':productId/options/:optionId')
   deleteProductOption(
     @Param('productId') productId: string,
