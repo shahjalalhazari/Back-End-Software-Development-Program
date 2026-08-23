@@ -5,6 +5,7 @@ import {
   IsOptional,
   IsUUID,
 } from 'class-validator';
+
 import { SubscriptionStatus } from '../../subscription/entity/subscription.entity';
 
 export class UpdateUserSubscriptionDto {

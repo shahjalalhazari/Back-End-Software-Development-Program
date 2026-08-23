@@ -1,3 +1,6 @@
+
+import { Subscription, SubscriptionStatus } from 'src/subscription/entity/subscription.entity';
+import { User } from 'src/user/entity/user.entity';
 import {
   Column,
   CreateDateColumn,
@@ -8,11 +11,6 @@ import {
   PrimaryGeneratedColumn,
   UpdateDateColumn,
 } from 'typeorm';
-import { User } from '../../user/entity/user.entity';
-import {
-  Subscription,
-  SubscriptionStatus,
-} from '../../subscription/entity/subscription.entity';
 
 @Entity('user_subscriptions')
 export class UserSubscription {
@@ -23,7 +21,9 @@ export class UserSubscription {
   @Index()
   userId: string;
 
-  @ManyToOne(() => User)
+  @ManyToOne(() => User, {
+    onDelete: 'CASCADE',
+  })
   @JoinColumn({ name: 'userId' })
   user: User;
 
@@ -31,7 +31,9 @@ export class UserSubscription {
   @Index()
   subscriptionId: string;
 
-  @ManyToOne(() => Subscription)
+  @ManyToOne(() => Subscription, {
+    onDelete: 'RESTRICT',
+  })
   @JoinColumn({ name: 'subscriptionId' })
   subscription: Subscription;
 
@@ -46,14 +48,22 @@ export class UserSubscription {
   @Column({ default: false })
   autoRenew: boolean;
 
-  @Column({ type: 'timestamp' })
+  @Column({
+    type: 'timestamp',
+    default: () => 'CURRENT_TIMESTAMP',
+  })
   startDate: Date;
 
-  @Column({ type: 'timestamp' })
+  @Column({
+    type: 'timestamp',
+  })
   endDate: Date;
 
-  @Column({ type: 'uuid', nullable: true })
-  paymentId: string;
+  @Column({
+    type: 'uuid',
+    nullable: true,
+  })
+  paymentId: string | null;
 
   @CreateDateColumn()
   createdAt: Date;

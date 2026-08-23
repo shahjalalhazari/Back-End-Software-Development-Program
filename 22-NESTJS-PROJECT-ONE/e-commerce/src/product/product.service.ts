@@ -32,6 +32,7 @@ import { ProductOptionRepository } from './repository/product-option.repository'
 import { CreateProductOptionDto } from './dto/product-option/create-product-option.dto';
 import { ProductOption } from './entity/product-option.entity';
 import { UpdateProductOptionDto } from './dto/product-option/update-product-option.dto';
+import { SubscriptionLimitsService } from 'src/subscription/subscription-limits.service';
 
 export interface ProductListResult {
   products: Product[];
@@ -49,6 +50,7 @@ export class ProductService {
     private readonly productImageRepository: ProductImageRepository,
     private readonly productVariantRepository: ProductVariantRepository,
     private readonly productOptionRepository: ProductOptionRepository,
+    private readonly subscriptionLimitsService: SubscriptionLimitsService,
   ) {}
 
   // -----------------------------------------
@@ -108,32 +110,33 @@ export class ProductService {
   private async validateStoreOwnership(
     storeId: string,
     user: AuthenticatedUser,
-  ): Promise<void> {
+  ): Promise<string> {
     const store = await this.storeService.findById(storeId);
     if (!store) {
       throw new NotFoundException('Store not found');
     }
+
     if (store.status !== StoreStatus.ACTIVE) {
       throw new ForbiddenException(
         'Store must be active before creating products',
       );
     }
-    // SYSTEM ADMIN CAN MANAGE PRODUCTS IN ANY STORE.
+
     if (user.role === UserRole.SYSTEM_ADMIN) {
-      return;
+      return store.userId;
     }
 
-    // ONLY VENDORS CAN CREATE PRODUCTS.
     if (user.role !== UserRole.VENDOR) {
       throw new ForbiddenException('Only store owners can create products');
     }
 
-    // CHECK THAT THE AUTHENTICATED USER OWNS THE STORE.
     if (store.userId !== user.id) {
       throw new ForbiddenException(
         'You are not allowed to create products in this store',
       );
     }
+
+    return store.userId;
   }
 
   // GENERATE UNIQUE TAG SLUG
@@ -490,22 +493,37 @@ export class ProductService {
     createProductDto: CreateProductDto,
     user: AuthenticatedUser,
   ): Promise<ProductResponseDto> {
-    // Validate that the store exists, is active,
-    // and belongs to the authenticated vendor.
-    await this.validateStoreOwnership(createProductDto.storeId, user);
+    // VALIDATE STORE AND GET THE OWNER
+    const storeOwnerId = await this.validateStoreOwnership(
+      createProductDto.storeId,
+      user,
+    );
 
-    const slug = await this.generateUniqueSlug(
-      createProductDto.slug ?? createProductDto.name,
+    // COUNT EXISTING PRODUCTS
+    const currentProductCount = await this.productRepository.countByStoreId(
       createProductDto.storeId,
     );
 
-    // Check SKU uniqueness.
+    // VALIDATE SUBSCRIPTION LIMIT
+    await this.subscriptionLimitsService.validateProductCreationLimit(
+      storeOwnerId,
+      currentProductCount,
+    );
+
+    // GENERATE UNIQUE SLUG
+    const slug =
+      createProductDto.slug ??
+      (await this.generateUniqueSlug(
+        createProductDto.name,
+        createProductDto.storeId,
+      ));
+
+    // CHECK SKU UNIQUENESS
     if (createProductDto.sku) {
       const existingSku = await this.productRepository.findByStoreAndSku(
         createProductDto.storeId,
         createProductDto.sku,
       );
-
       if (existingSku) {
         throw new ConflictException('Product SKU already exists in this store');
       }
@@ -542,13 +560,19 @@ export class ProductService {
 
     const savedProduct = await this.productRepository.save(product);
 
-    await this.assignCategories(savedProduct.id, createProductDto.categoryIds);
+    // ASSIGN CATEGORIES
+    if (createProductDto.categoryIds?.length) {
+      await this.assignCategories(product.id, createProductDto.categoryIds);
+    }
 
-    await this.assignTags(
-      savedProduct.id,
-      savedProduct.storeId,
-      createProductDto.tags,
-    );
+    // ASSIGN TAGS
+    if (createProductDto.tags?.length) {
+      await this.assignTags(
+        savedProduct.id,
+        savedProduct.storeId,
+        createProductDto.tags,
+      );
+    }
 
     return ProductMapper.toResponse(savedProduct);
   }

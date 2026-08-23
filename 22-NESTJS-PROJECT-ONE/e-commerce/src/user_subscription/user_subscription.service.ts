@@ -1,15 +1,16 @@
 import {
+  BadRequestException,
   ConflictException,
   Injectable,
   NotFoundException,
 } from '@nestjs/common';
-import { CreateUserSubscriptionDto } from './dto/create-user-subscription.dto';
-import { UpdateUserSubscriptionDto } from './dto/update-user-subscription.dto';
-import { UserSubscriptionResponseDto } from './dto/user-subscription-response.dto';
-import { SubscriptionStatus } from '../subscription/entity/subscription.entity';
 import { UserSubscriptionRepository } from './user_subscription.repository';
-import { StoreRepository } from '../store/store.repository';
-import { StoreStatus } from '../store/entity/store.entity';
+import { StoreRepository } from 'src/store/store.repository';
+import { SubscriptionStatus } from 'src/subscription/entity/subscription.entity';
+import { StoreStatus } from 'src/store/entity/store.entity';
+import { CreateUserSubscriptionDto } from './dto/create-user-subscription.dto';
+import { UserSubscriptionResponseDto } from './dto/user-subscription-response.dto';
+import { UpdateUserSubscriptionDto } from './dto/update-user-subscription.dto';
 
 @Injectable()
 export class UserSubscriptionService {
@@ -28,6 +29,7 @@ export class UserSubscriptionService {
         : StoreStatus.INACTIVE;
 
     const stores = await this.storeRepository.findByUserId(userId);
+
     for (const store of stores) {
       store.status = storeStatus;
       await this.storeRepository.update(store);
@@ -49,12 +51,24 @@ export class UserSubscriptionService {
       );
     }
 
+    const startDate = dto.startDate ? new Date(dto.startDate) : new Date();
+
+    const endDate = new Date(dto.endDate);
+
+    if (endDate <= startDate) {
+      throw new BadRequestException(
+        'Subscription end date must be after start date',
+      );
+    }
+
     const userSubscription = await this.repository.create({
-      ...dto,
+      userId: dto.userId,
+      subscriptionId: dto.subscriptionId,
       status: dto.status ?? SubscriptionStatus.ACTIVE,
-      startDate: dto.startDate ? new Date(dto.startDate) : undefined,
-      endDate: dto.endDate ? new Date(dto.endDate) : undefined,
+      startDate,
+      endDate,
       autoRenew: dto.autoRenew ?? false,
+      paymentId: dto.paymentId ?? null,
     });
 
     await this.syncStoreStatusForUser(dto.userId, userSubscription.status);
@@ -64,6 +78,7 @@ export class UserSubscriptionService {
 
   async findAll(): Promise<UserSubscriptionResponseDto[]> {
     const userSubscriptions = await this.repository.findAll();
+
     return userSubscriptions.map(
       (item) => new UserSubscriptionResponseDto(item),
     );
@@ -81,6 +96,7 @@ export class UserSubscriptionService {
 
   async findByUserId(userId: string): Promise<UserSubscriptionResponseDto[]> {
     const userSubscriptions = await this.repository.findByUserId(userId);
+
     return userSubscriptions.map(
       (item) => new UserSubscriptionResponseDto(item),
     );
@@ -91,6 +107,7 @@ export class UserSubscriptionService {
   ): Promise<UserSubscriptionResponseDto[]> {
     const userSubscriptions =
       await this.repository.findBySubscriptionId(subscriptionId);
+
     return userSubscriptions.map(
       (item) => new UserSubscriptionResponseDto(item),
     );
@@ -98,6 +115,7 @@ export class UserSubscriptionService {
 
   async findExpiredSubscriptions(): Promise<UserSubscriptionResponseDto[]> {
     const userSubscriptions = await this.repository.findExpiredSubscriptions();
+
     return userSubscriptions.map(
       (item) => new UserSubscriptionResponseDto(item),
     );
@@ -113,11 +131,21 @@ export class UserSubscriptionService {
       throw new NotFoundException(`User subscription with ID ${id} not found`);
     }
 
-    existing.endDate = new Date(newEndDate);
+    const endDate = new Date(newEndDate);
+
+    if (endDate <= new Date()) {
+      throw new BadRequestException(
+        'New subscription end date must be in the future',
+      );
+    }
+
+    existing.endDate = endDate;
     existing.status = SubscriptionStatus.ACTIVE;
 
     const updated = await this.repository.update(existing);
+
     await this.syncStoreStatusForUser(existing.userId, updated.status);
+
     return new UserSubscriptionResponseDto(updated);
   }
 
@@ -129,8 +157,11 @@ export class UserSubscriptionService {
     }
 
     existing.status = SubscriptionStatus.EXPIRED;
+
     const updated = await this.repository.update(existing);
+
     await this.syncStoreStatusForUser(existing.userId, updated.status);
+
     return new UserSubscriptionResponseDto(updated);
   }
 
@@ -142,8 +173,11 @@ export class UserSubscriptionService {
     }
 
     existing.status = SubscriptionStatus.CANCELLED;
+
     const updated = await this.repository.update(existing);
+
     await this.syncStoreStatusForUser(existing.userId, updated.status);
+
     return new UserSubscriptionResponseDto(updated);
   }
 
@@ -157,12 +191,20 @@ export class UserSubscriptionService {
       throw new NotFoundException(`User subscription with ID ${id} not found`);
     }
 
+    const endDate = dto.endDate ? new Date(dto.endDate) : existing.endDate;
+
+    if (endDate <= existing.startDate) {
+      throw new BadRequestException(
+        'Subscription end date must be after start date',
+      );
+    }
+
     const updated = await this.repository.update({
       ...existing,
       ...dto,
+      endDate,
       autoRenew:
         dto.autoRenew !== undefined ? dto.autoRenew : existing.autoRenew,
-      endDate: dto.endDate ? new Date(dto.endDate) : existing.endDate,
     });
 
     await this.syncStoreStatusForUser(existing.userId, updated.status);

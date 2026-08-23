@@ -210,4 +210,11 @@ export class ProductRepository {
         .getOne()
     );
   }
+
+  // COUNT PRODUCT OF A STORE
+  async countByStoreId(storeId: string): Promise<number> {
+    return await this.productRepository.count({
+      where: { storeId },
+    });
+  }
 }

@@ -17,6 +17,7 @@ import { ProductTagAssignmentRepository } from './repository/product-tag-assignm
 import { ProductImageRepository } from './repository/product-image.repository';
 import { ProductVariantRepository } from './repository/product-variant.repository';
 import { ProductOptionRepository } from './repository/product-option.repository';
+import { SubscriptionModule } from 'src/subscription/subscription.module';
 
 @Module({
   imports: [
@@ -30,6 +31,7 @@ import { ProductOptionRepository } from './repository/product-option.repository'
       ProductTagAssignment,
     ]),
     StoreModule,
+    SubscriptionModule,
   ],
   providers: [
     ProductService,

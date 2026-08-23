@@ -8,7 +8,7 @@ export class UserSubscriptionResponseDto {
   autoRenew?: boolean;
   startDate?: Date;
   endDate?: Date;
-  paymentId?: string;
+  paymentId?: string | null;
   createdAt?: Date;
   updatedAt?: Date;
 
