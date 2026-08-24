@@ -148,6 +148,15 @@ export class ProductController {
     return this.productService.restoreArchivedProduct(id, req.user);
   }
 
+  // DUPLICATE PRODUCT
+  @Post(':id/duplicate')
+  duplicate(
+    @Param('id') id: string,
+    @Req() req: AuthenticatedRequest,
+  ): Promise<ProductResponseDto> {
+    return this.productService.duplicateProduct(id, req.user);
+  }
+
   // GET PUBLIC PRODUCT BY SLUG
   @Get('slug/:slug')
   findPublishedBySlug(@Param('slug') slug: string) {

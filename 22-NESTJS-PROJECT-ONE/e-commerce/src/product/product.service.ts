@@ -449,6 +449,7 @@ export class ProductService {
     );
   }
 
+  // GENERATE PRODUCT OPTION COMBINATION KEY
   private getVariantCombinationKey(
     option1?: string | null,
     option2?: string | null,
@@ -459,6 +460,7 @@ export class ProductService {
       .join('|');
   }
 
+  // VALIDATE VARINAT OPTIONS
   private validateVariantOptions(
     option1?: string,
     option2?: string,
@@ -477,6 +479,7 @@ export class ProductService {
     }
   }
 
+  // REMOVE OR NORMALIZED VARIANT OPTIONS
   private normalizeVariantOption(value?: string): string | undefined {
     if (value === undefined || value === null) {
       return undefined;
@@ -484,6 +487,44 @@ export class ProductService {
     const normalized = value.trim();
 
     return normalized.length > 0 ? normalized : undefined;
+  }
+
+  // GENERATE UNIQUE DUPLICATED PRODUCT SKU
+  private async generateDuplicateProductSku(
+    storeId: string,
+    originalSku: string,
+  ): Promise<string> {
+    const baseSku = `${originalSku}-COPY`;
+
+    let sku = baseSku;
+    let suffix = 1;
+
+    while (await this.productRepository.findByStoreAndSku(storeId, sku)) {
+      sku = `${baseSku}-${suffix}`;
+      suffix++;
+    }
+
+    return sku;
+  }
+
+  // GENERATE UNIQUE DUPLICATED VARIANT SKU
+  private async generateDuplicateVariantSku(
+    storeId: string,
+    originalSku: string,
+  ): Promise<string> {
+    const baseSku = `${originalSku}-COPY`;
+
+    let sku = baseSku;
+    let suffix = 1;
+
+    while (
+      await this.productVariantRepository.findByStoreAndSku(storeId, sku)
+    ) {
+      sku = `${baseSku}-${suffix}`;
+      suffix++;
+    }
+
+    return sku;
   }
   // -----------------------------------------
 
@@ -862,6 +903,181 @@ export class ProductService {
     const updatedProduct = await this.productRepository.save(product);
 
     return ProductMapper.toResponse(updatedProduct);
+  }
+
+  // -----------------------------------------
+  // DUPLICATE PRODUCT
+  async duplicateProduct(
+    id: string,
+    user: AuthenticatedUser,
+  ): Promise<ProductResponseDto> {
+    // GET ORIGINAL PRODUCT
+    const product = await this.productRepository.findById(id);
+
+    if (!product) {
+      throw new NotFoundException('Product not found');
+    }
+
+    // VALIDATE PRODUCT OWNERSHIP
+    await this.validateProductOwnership(product, user);
+
+    // STORE MUST BE ACTIVE
+    await this.validateActiveStore(product.storeId);
+
+    // GENERATE UNIQUE PRODUCT NAME
+    const duplicatedName = `${product.name} Copy`;
+
+    // GENERATE UNIQUE SLUG
+    const duplicatedSlug = await this.generateUniqueSlug(
+      duplicatedName,
+      product.storeId,
+    );
+
+    // GENERATE UNIQUE PRODUCT SKU
+    const duplicatedSku = product.sku
+      ? await this.generateDuplicateProductSku(product.storeId, product.sku)
+      : undefined;
+
+    // CREATE DUPLICATED PRODUCT
+    const duplicatedProduct = this.productRepository.create({
+      storeId: product.storeId,
+
+      name: `${product.name} Copy`,
+      slug: duplicatedSlug,
+
+      description: product.description,
+      shortDescription: product.shortDescription,
+
+      price: product.price,
+      compareAtPrice: product.compareAtPrice,
+      costPrice: product.costPrice,
+
+      sku: duplicatedSku,
+      barcode: undefined,
+
+      status: ProductStatus.DRAFT,
+      publishedAt: null,
+
+      trackInventory: product.trackInventory,
+      allowBackorders: product.allowBackorders,
+      lowStockThreshold: product.lowStockThreshold,
+
+      quantity: 0,
+      weight: product.weight,
+      dimensions: product.dimensions,
+
+      hasVariants: product.hasVariants,
+      isFeatured: false,
+      isDigital: product.isDigital,
+
+      metaTitle: product.metaTitle,
+      metaDescription: product.metaDescription,
+    });
+
+    const savedProduct = await this.productRepository.save(duplicatedProduct);
+
+    // COPY CATEGORIES
+    const categories = await this.productCategoryRepository.findByProductId(id);
+
+    if (categories.length > 0) {
+      await this.productCategoryRepository.createMany(savedProduct.id, [
+        ...new Set(categories.map((category) => category.categoryId)),
+      ]);
+    }
+
+    // COPY TAGS
+    const tagAssignments =
+      await this.productTagAssignmentRepository.findByProductId(id);
+
+    for (const tagAssignment of tagAssignments) {
+      await this.productTagAssignmentRepository.create(
+        savedProduct.id,
+        tagAssignment.tagId,
+      );
+    }
+
+    // COPY IMAGES
+    const imageMap = new Map<string, string>();
+
+    const images = await this.productImageRepository.findByProductId(id);
+
+    for (const image of images) {
+      const duplicatedImage = this.productImageRepository.create({
+        productId: savedProduct.id,
+        url: image.url,
+        altText: image.altText,
+        position: image.position,
+        isPrimary: image.isPrimary,
+      });
+
+      const savedImage =
+        await this.productImageRepository.save(duplicatedImage);
+
+      imageMap.set(image.id, savedImage.id);
+    }
+
+    // COPY OPTIONS
+    const options = await this.productOptionRepository.findByProductId(id);
+
+    for (const option of options) {
+      const duplicatedOption = await this.productOptionRepository.create({
+        productId: savedProduct.id,
+        name: option.name,
+        values: option.values,
+        position: option.position,
+      });
+
+      await this.productOptionRepository.save(duplicatedOption);
+    }
+
+    // COPY VARIANTS
+    const variants = await this.productVariantRepository.findByProductId(id);
+
+    for (const variant of variants) {
+      const duplicatedVariantSku = variant.sku
+        ? await this.generateDuplicateVariantSku(product.storeId, variant.sku)
+        : null;
+
+      // MAP OLD IMAGE ID TO NEW IMAGE ID
+      const duplicatedImageId = variant.imageId
+        ? (imageMap.get(variant.imageId) ?? null)
+        : null;
+
+      const duplicatedVariant = this.productVariantRepository.create({
+        storeId: product.storeId,
+        productId: savedProduct.id,
+
+        name: variant.name,
+        sku: duplicatedVariantSku,
+        barcode: null,
+
+        price: variant.price,
+        compareAtPrice: variant.compareAtPrice,
+        costPrice: variant.costPrice,
+
+        quantity: 0,
+        weight: variant.weight,
+
+        option1: variant.option1,
+        option2: variant.option2,
+        option3: variant.option3,
+
+        imageId: duplicatedImageId,
+
+        position: variant.position,
+      });
+
+      await this.productVariantRepository.save(duplicatedVariant);
+    }
+
+    // GET FINAL PRODUCT
+    const finalProduct = await this.productRepository.findById(savedProduct.id);
+
+    if (!finalProduct) {
+      throw new NotFoundException('Duplicated product could not be loaded');
+    }
+
+    return ProductMapper.toResponse(finalProduct);
   }
   // -----------------------------------------
 
