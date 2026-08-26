@@ -22,13 +22,13 @@ export class ProductVariantRepository {
     return this.repository.save(variants);
   }
 
-  findById(id: string): Promise<ProductVariant | null> {
+  async findById(id: string): Promise<ProductVariant | null> {
     return this.repository.findOne({
       where: { id },
     });
   }
 
-  findByProductId(productId: string): Promise<ProductVariant[]> {
+  async findByProductId(productId: string): Promise<ProductVariant[]> {
     return this.repository.find({
       where: { productId },
       order: {
@@ -37,7 +37,7 @@ export class ProductVariantRepository {
     });
   }
 
-  findByStoreAndSku(
+  async findByStoreAndSku(
     storeId: string,
     sku: string,
   ): Promise<ProductVariant | null> {
@@ -51,16 +51,16 @@ export class ProductVariantRepository {
 
   async findByProductAndCombination(
     productId: string,
-    option1?: string,
-    option2?: string,
-    option3?: string,
+    option1: string,
+    option2: string | null,
+    option3: string | null,
   ): Promise<ProductVariant | null> {
     return this.repository.findOne({
       where: {
         productId,
-        option1: option1 ?? IsNull(),
-        option2: option2 ?? IsNull(),
-        option3: option3 ?? IsNull(),
+        option1,
+        option2: option2 === null ? IsNull() : option2,
+        option3: option3 === null ? IsNull() : option3,
       },
     });
   }

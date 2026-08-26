@@ -479,7 +479,7 @@ export class ProductService {
     }
   }
 
-  // REMOVE OR NORMALIZED VARIANT OPTIONS
+  // NORMALIZED VARIANT OPTIONS
   private normalizeVariantOption(value?: string): string | undefined {
     if (value === undefined || value === null) {
       return undefined;
@@ -487,6 +487,60 @@ export class ProductService {
     const normalized = value.trim();
 
     return normalized.length > 0 ? normalized : undefined;
+  }
+
+  // VALIDATE OPTION VALUES
+  private validateVariantOptionValues(
+    options: ProductOption[],
+    option1?: string,
+    option2?: string,
+    option3?: string,
+  ): void {
+    if (options.length === 0) {
+      return;
+    }
+    if (options.length > 3) {
+      throw new BadRequestException(
+        'A product can have a maximum of 3 variant options',
+      );
+    }
+
+    const variantValues = [option1, option2, option3];
+
+    for (let index = 0; index < options.length; index++) {
+      const option = options[index];
+      const value = variantValues[index];
+
+      if (!value) {
+        throw new BadRequestException(`Option ${index + 1} is required`);
+      }
+
+      const normalizedValue = value.trim().toLowerCase();
+
+      const exists = option.values.some(
+        (optionValue) => optionValue.trim().toLowerCase() === normalizedValue,
+      );
+
+      if (!exists) {
+        throw new BadRequestException(
+          `"${value}" is not a valid value for option "${option.name}"`,
+        );
+      }
+    }
+
+    // Don't allow values for option positions
+    // that don't exist on the product.
+    if (options.length < 3 && option3) {
+      throw new BadRequestException(
+        'Option 3 is not configured for this product',
+      );
+    }
+
+    if (options.length < 2 && option2) {
+      throw new BadRequestException(
+        'Option 2 is not configured for this product',
+      );
+    }
   }
 
   // GENERATE UNIQUE DUPLICATED PRODUCT SKU
@@ -1227,7 +1281,7 @@ export class ProductService {
   // -----------------------------------------
 
   // -----------------------------------------
-  // CREATE PRODUCT VARIENT
+  // CREATE PRODUCT VARIANT
   async createVariant(
     productId: string,
     dto: CreateVariantDto,
@@ -1240,17 +1294,50 @@ export class ProductService {
 
     await this.validateProductOwnership(product, user);
 
+    // NORMALIZE OPTIONS
+    const option1 = this.normalizeVariantOption(dto.option1);
+    const option2 = this.normalizeVariantOption(dto.option2);
+    const option3 = this.normalizeVariantOption(dto.option3);
+
+    // VALIDATE OPTION STRUCTURE
+    this.validateVariantOptions(option1, option2, option3);
+
+    // VALIDATE PRICE
     if (dto.compareAtPrice !== undefined && dto.compareAtPrice < dto.price) {
       throw new BadRequestException(
         'Compare price must be greater than or equal to price',
       );
     }
 
-    if (dto.sku) {
+    // GET PRODUCT OPTIONS
+    const productOptions =
+      await this.productOptionRepository.findByProductId(productId);
+
+    // VALIDATE OPTION VALUES
+    this.validateVariantOptionValues(productOptions, option1, option2, option3);
+
+    // CHECK DUPLICATE VARIANT COMBINATION
+    const existingCombination =
+      await this.productVariantRepository.findByProductAndCombination(
+        productId,
+        option1 ?? '',
+        option2 ?? null,
+        option3 ?? null,
+      );
+
+    if (existingCombination) {
+      throw new ConflictException('This variant combination already exists');
+    }
+
+    // -----------------------------------------
+    // SKU UNIQUENESS
+    const sku = dto.sku?.trim() || null;
+
+    if (sku) {
       const existingVariant =
         await this.productVariantRepository.findByStoreAndSku(
           product.storeId,
-          dto.sku,
+          sku,
         );
 
       if (existingVariant) {
@@ -1258,6 +1345,7 @@ export class ProductService {
       }
     }
 
+    // IMAGE VALIDATION
     if (dto.imageId) {
       const image = await this.productImageRepository.findById(dto.imageId);
 
@@ -1266,30 +1354,34 @@ export class ProductService {
       }
     }
 
+    // POSITION
     const variants =
       await this.productVariantRepository.findByProductId(productId);
 
-    this.validateVariantOptions(dto.option1, dto.option2, dto.option3);
+    // NAME
+    const name = [option1, option2, option3].filter(Boolean).join(' / ');
 
-    const name = [dto.option1, dto.option2, dto.option3]
-      .filter(Boolean)
-      .join(' / ');
-
+    // CREATE
     const variant = this.productVariantRepository.create({
       storeId: product.storeId,
       productId,
+
       name,
-      sku: dto.sku,
-      barcode: dto.barcode,
+      sku,
+      barcode: dto.barcode?.trim() || null,
+
       price: dto.price,
-      compareAtPrice: dto.compareAtPrice,
-      costPrice: dto.costPrice,
+      compareAtPrice: dto.compareAtPrice ?? null,
+      costPrice: dto.costPrice ?? null,
+
       quantity: dto.quantity ?? 0,
-      weight: dto.weight,
-      option1: dto.option1,
-      option2: dto.option2,
-      option3: dto.option3,
-      imageId: dto.imageId,
+      weight: dto.weight ?? null,
+
+      option1: option1 ?? '',
+      option2: option2 ?? null,
+      option3: option3 ?? null,
+
+      imageId: dto.imageId ?? null,
       position: variants.length,
     });
 
@@ -1323,9 +1415,21 @@ export class ProductService {
       );
     }
 
-    const combinations = this.generateCombinations(
-      options.map((option) => option.values),
-    );
+    const normalizedOptionValues = options.map((option) => [
+      ...new Set(
+        option.values
+          .map((value) => value.trim())
+          .filter((value) => value.length > 0),
+      ),
+    ]);
+
+    if (normalizedOptionValues.some((values) => values.length === 0)) {
+      throw new BadRequestException(
+        'Every variant option must contain at least one value',
+      );
+    }
+
+    const combinations = this.generateCombinations(normalizedOptionValues);
 
     // GET EXISTING VARIANTS
     const existingVariants =
@@ -1504,19 +1608,13 @@ export class ProductService {
 
     // IMAGE VALIDATION
     if (dto.imageId !== undefined) {
-      if (dto.imageId === null) {
-        variant.imageId = null;
-      } else {
-        const image = await this.productImageRepository.findById(dto.imageId);
+      const image = await this.productImageRepository.findById(dto.imageId);
 
-        if (!image || image.productId !== productId) {
-          throw new BadRequestException(
-            'Image does not belong to this product',
-          );
-        }
-
-        variant.imageId = dto.imageId;
+      if (!image || image.productId !== productId) {
+        throw new BadRequestException('Image does not belong to this product');
       }
+
+      variant.imageId = dto.imageId;
     }
 
     // CHECK DUPLICATE COMBINATION
@@ -1863,7 +1961,6 @@ export class ProductService {
     await this.validateProductOwnership(product, user);
 
     const option = await this.productOptionRepository.findById(optionId);
-
     if (!option || option.productId !== productId) {
       throw new NotFoundException('Product option not found');
     }
@@ -1890,6 +1987,15 @@ export class ProductService {
     }
 
     if (dto.values !== undefined) {
+      const existingVariants =
+        await this.productVariantRepository.findByProductId(productId);
+
+      if (existingVariants.length > 0) {
+        throw new BadRequestException(
+          'Cannot change variant option values while product variants exist',
+        );
+      }
+
       const values = [
         ...new Set(
           dto.values
@@ -1924,9 +2030,17 @@ export class ProductService {
     await this.validateProductOwnership(product, user);
 
     const option = await this.productOptionRepository.findById(optionId);
-
     if (!option || option.productId !== productId) {
       throw new NotFoundException('Product option not found');
+    }
+
+    const existingVariants =
+      await this.productVariantRepository.findByProductId(productId);
+
+    if (existingVariants.length > 0) {
+      throw new BadRequestException(
+        'Cannot delete a variant option while product variants exist',
+      );
     }
 
     await this.productOptionRepository.delete(optionId);

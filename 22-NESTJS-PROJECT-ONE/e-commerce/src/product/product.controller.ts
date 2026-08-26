@@ -319,7 +319,7 @@ export class ProductController {
   // PRODUCT VARIANT OPTIONS
   // -----------------------------------------
 
-  // ADD OPTION
+  // CREATE OPTION
   @Post(':productId/options')
   createProductOption(
     @Param('productId') productId: string,
