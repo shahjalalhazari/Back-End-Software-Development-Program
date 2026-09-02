@@ -1,0 +1,21 @@
+{
+  "name": "file-uploader-project",
+  "version": "1.0.0",
+  "description": "Basic Express.js application for file upload project",
+  "main": "app.js",
+  "scripts": {
+    "start": "node app.js",
+    "dev": "node app.js"
+  },
+  "keywords": [
+    "express",
+    "node",
+    "file-upload"
+  ],
+  "author": "",
+  "license": "MIT",
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^2.3.0"
+  }
+}
