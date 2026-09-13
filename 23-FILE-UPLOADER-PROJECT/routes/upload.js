@@ -4,6 +4,7 @@ const path = require("path");
 const fileTypeValidator = require("../middleware/fileTypeValidator");
 
 const router = express.Router();
+const uploadRateLimiter = require("../middleware/uploadRateLimiter");
 
 const storage = multer.diskStorage({
   destination: path.join(__dirname, "../public/uploads"),
@@ -21,7 +22,7 @@ const upload = multer({
 
 
 // Single File Upload
-router.post("/single", upload.single("file"), (req, res) => {
+router.post("/single", upload.single("file"), uploadRateLimiter, (req, res) => {
   if(!req.file) {
     return res.status(400).json({ error: "No file uploaded!"});
   }
@@ -40,7 +41,7 @@ router.post("/single", upload.single("file"), (req, res) => {
 
 
 // Multiple File Upload (Max 5 Files)
-router.post("/multiple", upload.array("files", 5), (req, res) => {
+router.post("/multiple", upload.array("files", 5), uploadRateLimiter, (req, res) => {
   if (!req.files || req.files.length === 0) {
     return res.status(400).json({ error: "No file uploaded!"});
   }
