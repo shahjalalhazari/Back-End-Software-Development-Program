@@ -1,0 +1,26 @@
+generator client {
+  provider = "prisma-client"
+  output   = "../generated/prisma"
+}
+
+datasource db {
+  provider = "postgresql"
+}
+
+model Upload {
+  id String @id @default(uuid())
+  originalName String
+  fileName String @unique
+  mimeType String
+  size Int
+  url String
+  storageType String @default("local")
+  uploadedBy String?
+  status String @default("pending")
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([mimeType])
+  @@index([createdAt])
+}
