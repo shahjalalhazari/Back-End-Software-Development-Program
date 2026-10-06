@@ -33,7 +33,7 @@ app.post('/register', async(req, res) => {
     res.status(201).json({ message: "User Registered", username});
 });
 
-
+// LOGIN ENDPOINT
 app.post('/login', async(req, res) => {
     // LOGIN PAYLOAD
     const {username, password} = req.body;
@@ -49,6 +49,26 @@ app.post('/login', async(req, res) => {
     // GENERATE TOKEN AND SEND RESPONSE
     const token = jwt.sign({username: user.username}, JWT_SECRET, {expiresIn: TOKEN_EXPIRY});
     res.json({ token });
+});
+
+// AUTH MIDDLEWARE
+function authMiddleware(req, res, next) {
+    const header = req.get('Authorization');
+    if (!header || !header.startsWith("Bearer ")) return res.status(401).json({ error: 'missing or malformed token' });
+
+    const token = header.slice("Bearer ".length);
+
+    try {
+        req.user = jwt.verify(token, JWT_SECRET);
+        next();
+    } catch (error) {
+        return res.status(401).json({ error: 'invalid or expired token' });
+    }
+};
+
+// GET USER PROFILE
+app.get('/profile', authMiddleware, (req, res) => {
+    res.json({ message: `Hello ${req.user.username}`, user: req.user });
 })
 
 app.listen(port, () => {
